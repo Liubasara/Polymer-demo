@@ -1,0 +1,10 @@
+<link rel="import" href="./polymer-1.10.0/bower_components/polymer/polymer.html">
+<script>
+  Polymer({
+    is: "test-element", // is来标示组件的标签名
+    // add a callback to the element's prototype
+    ready: function() { // ready是组件生命周期的一部分，这块以后会具体开一篇介绍
+      this.textContent = "I'm a proto-element. Check out my prototype!"  //为组件赋上一段文字
+    }
+  })
+</script>
