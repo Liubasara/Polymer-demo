@@ -1,0 +1,29 @@
+<link rel="import" href="./polymer-2.6.1/bower_components/polymer/polymer.html">
+<dom-module id="test-element">
+  <template>
+    <div>
+      <p>{{ data }}</p>
+      <slot></slot>
+    </div>
+  </template>
+  <script>
+    class TestElement extends Polymer.Element {
+      constructor () {
+        super()
+        this.textContext = 'hi ! this is Polymer 2 !'
+      }
+      static get is() {
+        return 'test-element'
+      }
+      static get properties () {
+        return {
+          data: {
+            type: String,
+            value: '下面是index.html中显示的插槽内容'
+          }
+        }
+      }
+    }
+    customElements.define(TestElement.is, TestElement)
+  </script>
+</dom-module>

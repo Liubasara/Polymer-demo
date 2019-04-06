@@ -1,0 +1,7 @@
+{
+  "name": "my-project",
+  "version": "0.0.1",
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.6.1"
+  }
+}
