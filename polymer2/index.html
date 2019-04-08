@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Polymer2 Demo</title>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+      // 配置 axios 拦截器
+      axios.interceptors.request.use(config => {
+        // request拦截器
+        return config
+        }, error => {
+        return Promise.reject(error)
+      })
+
+      axios.interceptors.response.use(res => {
+        // response拦截器
+        return res.data
+      }, error => {
+        return Promise.reject(error.response.data)
+      })
+    </script>
+    <script src="./polymer-2.6.1/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="./test-element.html">
+  </head>
+  <body>
+    <test-element></test-element>
+  </body>
+</html>

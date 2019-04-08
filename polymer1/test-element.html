@@ -1,0 +1,127 @@
+<link rel="import" href="./polymer-1.10.0/bower_components/polymer/polymer.html">
+<dom-module id="test-element">
+  <style>
+    .table-wrapper {
+      height: 500px;
+      overflow: scroll;
+    }
+    input {
+      margin: 0;
+      padding: 0;
+    }
+    .query-wrapper {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .query-wrapper input {
+      margin-right: 20px;
+    }
+    table {
+      border: 1px solid #EB8;/*table没有外围的border，只有内部的td或th有border*/
+      border-collapse: collapse; /*统一设置两个table为细线表格*/
+      background: #FF8C00;
+      color:#fff;
+    }
+    table thead th{
+      border: 1px solid #EB8;
+      border-right:#C96;
+      color:#fff;
+      background: #FF8C00;/*亮桔黄色*/
+    }
+    /*能带滚动条的表身的正体*/
+    table tbody{
+      border: 1px solid #C96;
+      border-right:#B74;
+      color:#666666;
+      background: #ECE9D8;
+    }
+    /*能带滚动条的表身的格子*/
+    table tbody td{
+      border:1px solid #C96;
+    }
+  </style>
+  <template>
+    <div>
+      <div class="query-wrapper">
+        <input type="text" value="{{searchValue::input}}" placeholder="根据名字搜索" on-keyup="handleKeyUp">
+        <div><button on-click="handleSearchClick">搜索</button></div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <template is="dom-repeat" items="{{staffTypes}}">
+                <th>[[item]]</th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template is="dom-repeat" items="{{allStaffs}}" as="staff">
+              <tr>
+                <template is="dom-repeat" items="{{staffTypes}}" as="staffKey">
+                  <td>
+                    [[_loadStaffMessage(staff, staffKey)]]
+                  </td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <content></content>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: "test-element", // is来标示组件的标签名
+      properties: {
+        allStaffs: {
+          type: Array,
+          value: []
+        },
+        staffTypes: {
+          type: Array,
+          computed: '_loadStaffTypes(allStaffs)'
+        },
+        searchValue: {
+          type: String,
+          value: ''
+        }
+      },
+      handleSearchClick () {
+        this.findStaffByName()
+      },
+      handleKeyUp (event) {
+        if (event.keyCode === 13 && event.key.toLowerCase() === 'enter') {
+          this.findStaffByName()
+        }
+      },
+      _loadStaffTypes (allStaffs) {
+        return Object.keys(allStaffs[0] || {})
+      },
+      _loadStaffMessage (staff, staffKey) {
+        return staff[staffKey]
+      },
+      findStaffByName () {
+        // 搜索
+        this.searchValue ? axios.get('/api/testByLiu/findStaffByName/', { params: { name: this.searchValue } }).then(data => {
+          this.set('allStaffs', [data.data])
+        }).catch(err => {
+          alert(err.meta.message)
+        }) : this.queryAllStaffs()
+      },
+      queryAllStaffs () {
+        // 所有员工
+        axios.get('/api/testByLiu/queryAllStaffs/').then(data => {
+          this.set('allStaffs', data.data)
+        })
+      },
+      // add a callback to the element's prototype
+      ready: function() { // ready是组件生命周期的一部分
+        // this.textContent = "I'm a proto-element. Check out my prototype!"  //为组件赋上一段文字
+        this.queryAllStaffs()
+      }
+    })
+  </script>
+</dom-module>
