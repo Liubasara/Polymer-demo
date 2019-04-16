@@ -5,6 +5,7 @@
       <p>[[data]]</p>
       <input type="text" value="{{inputDemo::input}}">
       <button on-click="showInputDemo">显示inputDemo</button>
+      <input type="text" value="{{testObservers.changeMe::input}}">
       <content></content>
     </div>
   </template>
@@ -12,10 +13,13 @@
     Polymer({
       is: "test-element", // is来标示组件的标签名
       // add a callback to the element's prototype
-      ready: function() { // ready是组件生命周期的一部分，这块以后会具体开一篇介绍
+      ready: function () { // ready是组件生命周期的一部分，这块以后会具体开一篇介绍
         // this.textContent = "I'm a proto-element. Check out my prototype!"  //为组件赋上一段文字
-        this.set('data', '更改')
+
+        // this.set('data', '更改')
         this.set('inputDemo', '你好')
+        // 更改整个testObservers
+        this.set('testObservers', {changeMe: '测试'})
       },
       properties: {
         data: {
@@ -30,23 +34,39 @@
           notify: true, // notify 是一个默认为 false 的属性，当该属性被设为 true 时，则每当该属性的值被改变一次，就会触发一次changed事件，该事件在外部组件中也可以感知到，并可以在 listeners 属性中设定事件相应的监听函数
           reflectToAttribute: true, // reflectToAttribute 是一个默认为 false 属性，当该属性被设为 true 时，该属性会变为组件上的属性出现，在本例中inputDemo会作为input-demo属性出现在test-element标签之上
           observer: 'observeInput' // 该属性和 Vue 中的 watch 属性大抵相似，会在属性更改时触发相对应的方法
+        },
+        testObservers: {
+          type: Object,
+          value: {
+            changeMe: null
+          },
+          observer: 'logTestObservers'
         }
       },
       listeners: {
         'data-changed': 'dataChangeHandler',
         'input-demo-changed': 'inputChangeHandler'
       },
+      observers: [
+        'logTestObserversChangeMe(testObservers.changeMe)'
+      ],
+      logTestObservers (newVal, oldVal) {
+        console.log('通过属性值设置的observer只能监听在对象整体出现变化时响应', newVal, oldVal)
+      },
+      logTestObserversChangeMe (val) {
+        console.log('通过observers属性进行监听的值可以监听任意对象中的值', val)
+      },
       dataChangeHandler (event) {
-        console.log('data更改', event)
+        console.log('通过notify和listeners的结合可以进行全局事件监听，并触发自定义响应函数', event)
       },
       inputChangeHandler (event) {
-        console.log('输入更改', event)
-      },
-      showInputDemo () {
-        console.log('listeners', this.inputDemo)
+        console.log('通过notify和listeners的结合可以进行全局事件监听，并触发自定义响应函数', event)
       },
       observeInput (newVal, oldVal) {
-        console.log('观测', newVal, oldVal)
+        console.log('除了listener和motify的结合以外，还可以通过observe属性来响应一个属性的更改', newVal, oldVal)
+      },
+      showInputDemo () {
+        console.log('点击事件触发', this.inputDemo)
       }
     })
   </script>
