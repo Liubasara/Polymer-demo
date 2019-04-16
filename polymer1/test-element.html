@@ -21,12 +21,14 @@
         data: {
           type: String,
           notify: false,
-          reflectToAttribute: true
+          reflectToAttribute: true,
+          value: '以下是index.html中的内容：',
+          readOnly: true // readOnly，该属性开启后，data属性会变为只读，只有getter，没有setter
         },
         inputDemo: {
           type: String,
-          notify: true,
-          reflectToAttribute: true
+          notify: true, // notify 是一个默认为 false 的属性，当该属性被设为 true 时，则每当该属性的值被改变一次，就会触发一次changed事件，可以在 listeners 属性中设定事件相应的监听函数
+          reflectToAttribute: true // reflectToAttribute 是一个默认为 false 属性，当该属性被设为 true 时，该属性会变为组件上的属性出现，在本例中inputDemo会作为input-demo属性出现在test-element标签之上
         }
       },
       listeners: {
