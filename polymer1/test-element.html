@@ -2,7 +2,9 @@
 <dom-module id="test-element">
   <template>
     <div>
-      <p>{{ data }}</p>
+      <p>[[data]]</p>
+      <input type="text" value="{{inputDemo::input}}">
+      <button on-click="showInputDemo">显示inputDemo</button>
       <content></content>
     </div>
   </template>
@@ -12,12 +14,33 @@
       // add a callback to the element's prototype
       ready: function() { // ready是组件生命周期的一部分，这块以后会具体开一篇介绍
         // this.textContent = "I'm a proto-element. Check out my prototype!"  //为组件赋上一段文字
+        this.set('data', '更改')
+        this.set('inputDemo', '你好')
       },
       properties: {
         data: {
           type: String,
-          value: '下面是index.html中显示的插槽内容'
+          notify: false,
+          reflectToAttribute: true
+        },
+        inputDemo: {
+          type: String,
+          notify: true,
+          reflectToAttribute: true
         }
+      },
+      listeners: {
+        'data-changed': 'dataChangeHandler',
+        'input-demo-changed': 'inputChangeHandler'
+      },
+      dataChangeHandler (event) {
+        console.log('data更改', event)
+      },
+      inputChangeHandler (event) {
+        console.log('输入更改', event)
+      },
+      showInputDemo () {
+        console.log(this.inputDemo)
       }
     })
   </script>
