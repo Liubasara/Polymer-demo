@@ -20,6 +20,9 @@
         this.set('inputDemo', '你好')
         // 更改整个testObservers
         this.set('testObservers', {changeMe: '测试'})
+        ;(() => {
+          console.log('Polymer中可以使用ES6语法并且自动polyfill')
+        })()
       },
       properties: {
         data: {
