@@ -1,0 +1,45 @@
+<dom-module id="chat-box">
+  <template>
+
+    <style>
+      :host .message {
+        display: flex;
+      }
+      :host .self {
+        flex-direction: row-reverse;
+      }
+    </style>
+
+    <div class$="[[checkMessage(entity.id)]]">[[entity.message]]</div>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-box',
+      properties: {
+        entity: {
+          type: Object,
+          notify: true
+        }
+      },
+      attached () {
+        if (this.entity.shouldScroll) {
+          console.log(Polymer.dom(this).node.scrollIntoView())
+        }
+      },
+      checkMessage (id) {
+        switch (id) {
+          case '0':
+            return 'self message'
+            break
+          case '1':
+            return 'message'
+            break
+          default:
+            return 'message'
+            break
+        }
+      }
+    })
+  </script>
+</dom-module>
