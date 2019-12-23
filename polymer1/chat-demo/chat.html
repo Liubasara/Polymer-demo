@@ -1,0 +1,109 @@
+<link rel="import" href="../polymer-1.10.0/bower_components/polymer/polymer.html">
+<link rel="stylesheet" href="./reset.css"/>
+
+<style>
+/* 滚动条相关 */
+::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+</style>
+
+<dom-module id="chat-demo">
+  <template>
+    <style>
+      :host .wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        margin: auto;
+        height: 500px;
+        width: 500px;
+        padding: 5px;
+        border: 5px solid lightgray;
+      }
+      :host .container {
+        position: relative;
+        height: 100%;
+      }
+      :host .message-container {
+        height: 80%;
+        border-bottom: 1px solid lightgray;
+        overflow-y: scroll;
+      }
+      :host .input-container {
+        height: 20%;
+      }
+      :host .input-textarea {
+        height: calc(100% - 5px);
+        width: calc(100% - 5px);
+      }
+      :host .message {
+        display: flex;
+      }
+      :host .self {
+        flex-direction: row-reverse;
+      }
+      
+    </style>
+    <div class="wrapper">
+      <div class="container">
+        <div class="message-container show-scrollbar">
+          <template is="dom-repeat" items="[[chatData]]">
+            <div class$="[[checkMessage(item)]]">[[item.message]]</div>
+          </template>
+        </div>
+        <div class="input-container">
+          <textarea name="" id="" class="input-textarea"></textarea>
+        </div>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-demo',
+      ready () {
+        var self = this
+        window.sendMessage = function () {
+          self.push('chatData', { id: '0', message: '发信息' })
+        }
+        window.receiveMessage = function () {
+          self.push('chatData', { id: '1', message: '收消息' })
+        }
+      },
+      properties: {
+        chatData: {
+          type: Array,
+          value: () => {
+            return [
+              { id: '0', message: '我发的第1条消息' },
+              { id: '1', message: '接收的第1条消息' }
+            ]
+          }
+        }
+      },
+      checkMessage (item) {
+        switch (item.id) {
+          case '0':
+            return 'self message'
+            break
+          case '1':
+            return 'message'
+            break
+          default:
+            return 'message'
+            break
+        }
+      }
+    })
+  </script>
+</dom-module>
