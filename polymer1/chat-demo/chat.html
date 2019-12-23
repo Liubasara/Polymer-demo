@@ -45,8 +45,9 @@
         height: 20%;
       }
       :host .input-textarea {
-        height: calc(100% - 5px);
-        width: calc(100% - 5px);
+        height: 100%;
+        width: 100%;
+        overflow-y: scroll;
       }
     </style>
     <div class="wrapper">
@@ -57,7 +58,7 @@
           </template>
         </div>
         <div class="input-container">
-          <textarea name="" id="" class="input-textarea"></textarea>
+          <div class="input-textarea" id="input-textarea" contenteditable="true" on-keydown="handleInputKeyDown"></div>
         </div>
       </div>
     </div>
@@ -66,13 +67,15 @@
     Polymer({
       is: 'chat-demo',
       ready () {
-        var self = this
-        window.sendMessage = function () {
-          self.push('chatData', { id: '0', message: '发信息' })
-        }
-        window.receiveMessage = function () {
-          self.push('chatData', { id: '1', message: '收消息' })
-        }
+        window.sendMessage = this.sendMessage.bind(this)
+        window.receiveMessage = this.receiveMessage.bind(this)
+        Polymer.dom(this.root).querySelector('#input-textarea').addEventListener('input', this.textAreaChange.bind(this))
+      },
+      sendMessage (message) {
+        this.push('chatData', { id: '0', message: message || '发信息' })
+      },
+      receiveMessage () {
+        this.push('chatData', { id: '1', message: '收消息' })
       },
       properties: {
         chatData: {
@@ -83,12 +86,18 @@
               { id: '1', message: '接收的第1条消息' }
             ]
           }
+        },
+        chatInput: {
+          type: String,
+          value: '',
+          notify: true
         }
       },
       observers: [
         'observerChatData(chatData.*)'
       ],
       observerChatData (val) {
+        /** 滚动相关 **/
         let shouldScroll = false
         let messageConstainer = Polymer.dom(this.root).querySelector('#message-container')
         if (messageConstainer) {
@@ -96,9 +105,18 @@
           shouldScroll = val.base[val.base.length - 1].id === '0'
                 || scrollHeight === clientHeight
                 || scrollTop === 0
-                || scrollTop > scrollHeight - clientHeight * 2
+                || clientHeight * 2 > scrollHeight - scrollTop
           val.base[val.base.length - 1].shouldScroll = shouldScroll
         }
+      },
+      handleInputKeyDown (e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+          this.sendMessage(this.chatInput)
+          console.log(this.chatInput)
+        }
+      },
+      textAreaChange (e) {
+        this.set('chatInput', e.target.innerHTML)
       }
     })
   </script>
