@@ -1,5 +1,6 @@
 <link rel="import" href="../polymer-1.10.0/bower_components/polymer/polymer.html">
 <link rel="import" href="./chat-box.html">
+<link rel="import" href="./chat-input.html">
 <link rel="stylesheet" href="./reset.css"/>
 
 <style>
@@ -44,11 +45,6 @@
       :host .input-container {
         height: 20%;
       }
-      :host .input-textarea {
-        height: 100%;
-        width: 100%;
-        overflow-y: scroll;
-      }
     </style>
     <div class="wrapper">
       <div class="container">
@@ -58,7 +54,7 @@
           </template>
         </div>
         <div class="input-container">
-          <div class="input-textarea" id="input-textarea" contenteditable="true" on-keydown="handleInputKeyDown"></div>
+          <chat-input></chat-input>
         </div>
       </div>
     </div>
@@ -69,13 +65,15 @@
       ready () {
         window.sendMessage = this.sendMessage.bind(this)
         window.receiveMessage = this.receiveMessage.bind(this)
-        Polymer.dom(this.root).querySelector('#input-textarea').addEventListener('input', this.textAreaChange.bind(this))
       },
-      sendMessage (message) {
-        this.push('chatData', { id: '0', message: message || '发信息' })
+      sendMessage (event, msg) {
+        this.push('chatData', { id: '0', message: msg ? msg.message : '发信息' })
       },
       receiveMessage () {
         this.push('chatData', { id: '1', message: '收消息' })
+      },
+      listeners: {
+        'send-message': 'sendMessage'
       },
       properties: {
         chatData: {
@@ -86,11 +84,6 @@
               { id: '1', message: '接收的第1条消息' }
             ]
           }
-        },
-        chatInput: {
-          type: String,
-          value: '',
-          notify: true
         }
       },
       observers: [
@@ -108,15 +101,6 @@
                 || clientHeight * 2 > scrollHeight - scrollTop
           val.base[val.base.length - 1].shouldScroll = shouldScroll
         }
-      },
-      handleInputKeyDown (e) {
-        if (e.ctrlKey && e.key === 'Enter') {
-          this.sendMessage(this.chatInput)
-          console.log(this.chatInput)
-        }
-      },
-      textAreaChange (e) {
-        this.set('chatInput', e.target.innerHTML)
       }
     })
   </script>

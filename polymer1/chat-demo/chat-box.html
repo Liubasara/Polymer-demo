@@ -24,7 +24,7 @@
       },
       attached () {
         if (this.entity.shouldScroll) {
-          console.log(Polymer.dom(this).node.scrollIntoView())
+          Polymer.dom(this).node.scrollIntoView()
         }
       },
       checkMessage (id) {

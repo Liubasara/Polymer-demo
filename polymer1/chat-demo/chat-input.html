@@ -1,0 +1,45 @@
+<dom-module id="chat-input">
+  <template>
+    <style>
+      :host .input-textarea {
+        height: 100%;
+        width: 100%;
+        overflow-y: scroll;
+      }  
+    </style>
+    <div class="input-textarea" id="input-textarea" contenteditable="true" on-keydown="handleInputKeyDown"></div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-input',
+      properties: {
+        chatInputText: {
+          type: String,
+          value: '',
+          notify: true
+        },
+        chatInputImgs: {
+          type: Array,
+          value: () => ([]),
+          notify: true
+        }
+      },
+      ready () {
+        Polymer.dom(this.root).querySelector('#input-textarea').addEventListener('input', this.textAreaChange.bind(this))
+      },
+      handleInputKeyDown (e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+          this.fire('send-message', { message: this.chatInputText })
+          this.chatInputImgs.forEach(item => {
+            this.fire('send-message', { message: item })
+          })
+        }
+      },
+      textAreaChange (e) {
+        let imgLists = e.target.querySelectorAll('img')
+        this.set('chatInputImgs', [...imgLists].map(item => item.src))
+        this.set('chatInputText', e.target.innerText)
+      }
+    })
+  </script>
+</dom-module>
