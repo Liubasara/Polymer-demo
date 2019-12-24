@@ -1,0 +1,213 @@
+<link rel="import" href="../polymer-1.10.0/bower_components/polymer/polymer.html">
+<link rel="import" href="./chat-box.html" />
+<link rel="stylesheet" href="./reset.css" />
+<link rel="stylesheet" href="./mescroll/mescroll.min.css" />
+<script src="./mescroll/mescroll.min.js"></script>
+
+<style>
+  /* 滚动条相关 */
+  ::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+  }
+</style>
+
+<dom-module id="chat-demo">
+  <template>
+    <style>
+      :host .wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        margin: auto;
+        height: 500px;
+        width: 500px;
+        padding: 5px;
+        border: 5px solid lightgray;
+      }
+      :host .container {
+        position: relative;
+        height: 100%;
+      }
+      :host .message-container {
+        height: 80%;
+        border-bottom: 1px solid lightgray;
+        overflow-y: scroll;
+      }
+      :host .input-container {
+        height: 20%;
+      }
+      :host .input-textarea {
+        height: 100%;
+        width: 100%;
+        overflow-y: scroll;
+      }
+    </style>
+    <div class="wrapper">
+      <div class="container">
+        <div class="message-container show-scrollbar" id="message-container">
+          <!-- <template is="dom-if" if="{{isShowMore}}">
+            
+          </template> -->
+          <div on-click="pullDown">加载更多消息</div>
+          <template is="dom-repeat" items="[[chatData]]">
+            <chat-box entity="[[item]]"></chat-box>
+          </template>
+        </div>
+        <div class="input-container">
+          <div
+            class="input-textarea"
+            id="input-textarea"
+            contenteditable="true"
+            on-keydown="handleInputKeyDown"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-demo',
+      properties: {
+        isShowMore: {
+          type: Boolean,
+          value: true
+        },
+        lastScrollHeight: {
+          type: Number
+        }
+      },
+      ready() {
+        window.sendMessage = this.sendMessage.bind(this)
+        window.receiveMessage = this.receiveMessage.bind(this)
+        Polymer.dom(this.root)
+          .querySelector('#input-textarea')
+          .addEventListener('input', this.textAreaChange.bind(this))
+      },
+      pullDown() {
+        const self = this
+        var mescroll = new MeScroll('message-container', {
+          //第一个参数"mescroll"对应上面布局结构div的id
+          //如果下拉刷新是重置列表数据,那么down完全可以不用配置
+          down: {
+            use: true, //是否初始化下拉刷新; 默认true
+            auto: true, //是否在初始化完毕之后自动执行下拉回调callback; 默认true
+            autoShowLoading: true,
+            callback: downCallback //下拉刷新的回调
+          }
+        })
+
+        var pageSize = 10
+        function downCallback(page) {
+          setTimeout(() => {
+            const data = [
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息-' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息' },
+              { id: '1', message: '我是历史消息，收信息' },
+              { id: '0', message: '我是历史消息，发信息' },
+              { id: '1', message: '我是历史消息，瘦信息' }
+            ]
+            mescroll.endSuccess(data.length)
+            var listDom = document.getElementById('message-container')
+            var startHeight = listDom.scrollHeight
+            data.forEach(item => {
+              self.unshift('chatData', item)
+            })
+            // listDom.scrollTop = 700
+            self.set('lastScrollHeight', startHeight)
+            // self.set('isShowMore', false)
+            mescroll.endErr()
+          }, 1000)
+        }
+      },
+      sendMessage(message) {
+        this.push('chatData', { id: '0', message: message || '发信息' })
+      },
+      receiveMessage() {
+        this.push('chatData', { id: '1', message: '收消息' })
+      },
+      properties: {
+        chatData: {
+          type: Array,
+          value: () => {
+            return [
+              { id: '0', message: '我发的第1条消息' },
+              { id: '1', message: '接收的第1条消息' }
+            ]
+          }
+        },
+        chatInput: {
+          type: String,
+          value: '',
+          notify: true
+        }
+      },
+      observers: ['observerChatData(chatData.*)'],
+      observerChatData(val) {
+        /** 滚动相关 **/
+        let shouldScroll = false
+        let messageConstainer = Polymer.dom(this.root).querySelector(
+          '#message-container'
+        )
+        if (messageConstainer) {
+          let { scrollHeight, clientHeight, scrollTop } = messageConstainer
+          shouldScroll =
+            val.base[val.base.length - 1].id === '0' ||
+            scrollHeight === clientHeight ||
+            scrollTop === 0 ||
+            clientHeight * 2 > scrollHeight - scrollTop
+          val.base[val.base.length - 1].shouldScroll = shouldScroll
+        }
+        // 条数大于20条时，出现加载更多按钮
+        // if (this.chatData.length > 20) {
+        //   this.set('isShowMore', true)
+        // }
+      },
+      handleInputKeyDown(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+          this.sendMessage(this.chatInput)
+          // console.log(this.chatInput)
+          console.log(
+            Polymer.dom(this.root).querySelector('#input-textarea').innerText
+          )
+          console.dir(
+            Polymer.dom(this.root).querySelectorAll('#input-textarea img')
+          )
+        }
+      },
+      textAreaChange(e) {
+        this.set('chatInput', e.target.innerHTML)
+      }
+    })
+  </script>
+</dom-module>
