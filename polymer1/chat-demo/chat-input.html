@@ -5,9 +5,15 @@
         height: 100%;
         width: 100%;
         overflow-y: scroll;
-      }  
+      }
     </style>
-    <div class="input-textarea" id="input-textarea" contenteditable="true" on-keydown="handleInputKeyDown"></div>
+    <div
+      class="input-textarea"
+      id="input-textarea"
+      contenteditable="true"
+      on-keydown="handleInputKeyDown"
+      on-paste="pasteIntoTextArea"
+    ></div>
   </template>
   <script>
     Polymer({
@@ -20,25 +26,58 @@
         },
         chatInputImgs: {
           type: Array,
-          value: () => ([]),
+          value: () => [],
           notify: true
         }
       },
-      ready () {
-        Polymer.dom(this.root).querySelector('#input-textarea').addEventListener('input', this.textAreaChange.bind(this))
+      ready() {
+        let inputTextArea = Polymer.dom(this.root).querySelector('#input-textarea')
+        inputTextArea.addEventListener('input', this.textAreaChange.bind(this))
       },
-      handleInputKeyDown (e) {
+      handleInputKeyDown(e) {
         if (e.ctrlKey && e.key === 'Enter') {
-          this.fire('send-message', { message: this.chatInputText })
+          this.chatInputText.trim() &&
+            this.fire('send-message', { message: this.chatInputText })
           this.chatInputImgs.forEach(item => {
             this.fire('send-message', { message: item })
           })
         }
       },
-      textAreaChange (e) {
-        let imgLists = e.target.querySelectorAll('img')
-        this.set('chatInputImgs', [...imgLists].map(item => item.src))
-        this.set('chatInputText', e.target.innerText)
+      textAreaChange() {
+        const textArea = Polymer.dom(this.root).querySelector('#input-textarea')
+        let imgLists = textArea.querySelectorAll('img')
+        this.set(
+          'chatInputImgs',
+          [...imgLists].map(item => item.src)
+        )
+        this.set('chatInputText', textArea.innerText)
+      },
+      pasteIntoTextArea(e) {
+        e.stopPropagation()
+        e.preventDefault()
+        var self = this
+        const { items, types } = e.clipboardData || e.originalEvent.clipboardData
+        // 如果包含文件内容
+        if (types.indexOf('Files') > -1) {
+          for (let index = 0; index < items.length; index++) {
+            const item = items[index]
+            if (item.kind === 'file') {
+              const file = item.getAsFile()
+              if (file) {
+                const reader = new FileReader()
+                const image = new Image()
+                reader.onloadend = function handleLoad () {
+                  image.src = this.result
+                  Polymer.dom(self.root).querySelector('#input-textarea').appendChild(image)
+                  /** 触发 textAreaChange **/
+                  self.textAreaChange()
+                }
+                /** 触发 loadend **/
+                reader.readAsDataURL(file)
+              }
+            }
+          }
+        }
       }
     })
   </script>

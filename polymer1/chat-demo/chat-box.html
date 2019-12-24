@@ -2,15 +2,31 @@
   <template>
 
     <style>
+      :host .img-wrapper {
+        height: 24px;
+        width: 24px;
+      }
+      :host .content {
+        width: 300px;
+      }
       :host .message {
         display: flex;
+        width: 100%;
+        word-break: break-all;
       }
       :host .self {
         flex-direction: row-reverse;
       }
+      :host .self .content {
+        display: flex;
+        justify-content: flex-end;
+      }
     </style>
 
-    <div class$="[[checkMessage(entity.id)]]">[[entity.message]]</div>
+    <div class$="[[checkMessage(entity.id)]]">
+      <div class="img-wrapper"><img src="./avatar0.jpg" alt="头像" height="100%" width="100%" style="border-radius: 22px;"></div>
+      <div class="content">[[showTextOrMessage(entity.message)]]</div>
+    </div>
 
   </template>
   <script>
@@ -26,6 +42,17 @@
         if (this.entity.shouldScroll) {
           Polymer.dom(this).node.scrollIntoView()
         }
+      },
+      showTextOrMessage (message) {
+        if (/data:image\//.test(message)) {
+          const image = new Image()
+          image.src = message
+          image.setAttribute('height', '100%')
+          image.setAttribute('width', '100%')
+          Polymer.dom(this).node.querySelector('.content').appendChild(image)
+          return
+        }
+        return message
       },
       checkMessage (id) {
         switch (id) {
