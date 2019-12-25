@@ -54,11 +54,11 @@
       },
       pasteIntoTextArea(e) {
         e.stopPropagation()
-        e.preventDefault()
         var self = this
         const { items, types } = e.clipboardData || e.originalEvent.clipboardData
         // 如果包含文件内容
         if (types.indexOf('Files') > -1) {
+          e.preventDefault()
           for (let index = 0; index < items.length; index++) {
             const item = items[index]
             if (item.kind === 'file') {

@@ -85,6 +85,7 @@
         window.receiveMessage = this.receiveMessage.bind(this)
       },
       sendMessage (event, msg) {
+        event && event.stopPropagation()
         this.push('chatData', { id: '0', message: msg ? msg.message : '发信息' })
       },
       receiveMessage () {
@@ -121,7 +122,6 @@
                 && (this.showMore || this.showMore === undefined)
           val.base[val.base.length - 1].shouldScroll = shouldScroll
         }
-        console.log(val)
       },
       pullDown (e) {
         this.set('showMore', false)
@@ -133,15 +133,9 @@
             let newChatData = mockHistoryData.concat(this.chatData)
             this.set('chatData', newChatData)
             this.async(() => {
+              // 滚动至原来滚动条所在地
               Polymer.dom(this.root).querySelectorAll('chat-box')[mockHistoryData.length - 1].scrollIntoView()
             }, 0)
-            // unshift 方式
-            // for (let i = mockHistoryData.length - 1; i >= 0; i--) {
-            //   if (i === mockHistoryData.length - 1) {
-            //     mockHistoryData[i].shouldScroll = true
-            //   }
-            //   this.unshift('chatData', mockHistoryData[i])
-            // }
             mescroll.endSuccess(mockHistoryData.length)
             this.set('showMore', true)
           }, 1000)

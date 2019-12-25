@@ -7,19 +7,17 @@
         width: 24px;
       }
       :host .content {
-        width: 300px;
+        max-width: 300px;
+        cursor: pointer;
       }
       :host .message {
         display: flex;
         width: 100%;
         word-break: break-all;
+        margin-bottom: 5px;
       }
       :host .self {
         flex-direction: row-reverse;
-      }
-      :host .self .content {
-        display: flex;
-        justify-content: flex-end;
       }
     </style>
 
@@ -50,6 +48,15 @@
           image.setAttribute('height', '100%')
           image.setAttribute('width', '100%')
           Polymer.dom(this).node.querySelector('.content').appendChild(image)
+          return
+        }
+        const multiLines = message.split('\n')
+        if (multiLines.length > 1) {
+          multiLines.forEach(item => {
+            const el = document.createElement('div')
+            el.innerText = item
+            Polymer.dom(this).node.querySelector('.content').appendChild(el)
+          })
           return
         }
         return message
