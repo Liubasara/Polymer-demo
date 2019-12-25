@@ -50,12 +50,7 @@
           Polymer.dom(this).node.querySelector('.content').appendChild(image)
           return
         }
-        const multiLines = message.split('\n')
-        if (multiLines.length > 1) {
-          Polymer.dom(this).node.querySelector('.content').innerHTML = multiLines.join('<br>')
-          return
-        }
-        return message
+        return this.formatMessage(message)
       },
       checkMessage (id) {
         switch (id) {
@@ -69,6 +64,30 @@
             return 'message'
             break
         }
+      },
+      formatMessage (message) {
+        /** 格式化 Message **/
+        let multiLines = message.split('\n')
+        if (multiLines.length > 1) {
+          /** 确保每行之间最多只有一个换行符 **/
+          multiLines = multiLines.reduce((acc, curr) => {
+            if (acc.length === 0) {
+              if (curr === '') {
+                return acc
+              }
+              acc.push(curr)
+              return acc
+            }
+            if (acc[acc.length - 1] === '' && curr === '') {
+              return acc
+            }
+            acc.push(curr)
+            return acc
+          }, [])
+          Polymer.dom(this).node.querySelector('.content').innerHTML = multiLines.join('<br>')
+          return
+        }
+        return message
       }
     })
   </script>

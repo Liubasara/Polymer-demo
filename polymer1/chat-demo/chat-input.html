@@ -54,7 +54,7 @@
       },
       pasteIntoTextArea(e) {
         e.stopPropagation()
-        var self = this
+        const self = this
         const { items, types } = e.clipboardData || e.originalEvent.clipboardData
         // 如果包含文件内容
         if (types.indexOf('Files') > -1) {
