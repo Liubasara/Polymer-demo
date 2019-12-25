@@ -1,0 +1,102 @@
+<link rel="import" href="./chat-box.html">
+<link rel="stylesheet" href="./mescroll/mescroll.min.css" />
+<script src="./mescroll/mescroll.min.js"></script>
+
+<dom-module id="chat-list">
+  <template>
+
+    <style>
+      :host .message-container {
+        height: 100%;
+        border-bottom: 1px solid lightgray;
+        overflow-y: scroll;
+      }
+      :host .input-container {
+        height: 20%;
+      }
+      :host .more-button {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: auto;
+        width: 100px;
+        height: 25px;
+        color: white;
+        background-color: gray;
+        border-radius: 5px;
+        font-size: 12px;
+        cursor: pointer;
+      }  
+    </style>
+
+    <div class="message-container show-scrollbar" id="message-container">
+      <template is="dom-if" if="{{showMore}}">
+        <div class="more-button" on-click="pullDown">加载更多消息</div>
+      </template>
+      <template is="dom-repeat" items="[[chatData]]">
+        <chat-box entity="[[item]]"></chat-box>
+      </template>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-list',
+      properties: {
+        chatData: {
+          type: Array,
+          notify: true
+        },
+        showMore: {
+          type: Boolean,
+          value: true
+        }
+      },
+      observers: [
+        'observerChatData(chatData.*)'
+      ],
+      observerChatData (val) {
+        /** 滚动相关 **/
+        let shouldScroll = false
+        let messageConstainer = Polymer.dom(this.root).querySelector('#message-container')
+        if (messageConstainer) {
+          let { scrollHeight, clientHeight, scrollTop } = messageConstainer
+          shouldScroll = (val.base[val.base.length - 1].id === '0'
+                || scrollHeight === clientHeight
+                || scrollTop === 0
+                || clientHeight * 2 > scrollHeight - scrollTop)
+                && (this.showMore || this.showMore === undefined)
+          val.base[val.base.length - 1].shouldScroll = shouldScroll
+        }
+      },
+      pullDown (e) {
+        this.set('showMore', false)
+        const downCallback = () => {
+          this.set('paging', true)
+          setTimeout(() => {
+            let mockHistoryData = new Array(10).fill(1).map((item, index) => parseInt(Math.random() * (2),10) ? { id: '0', message: `第${index + 1}条历史消息` } : { id: '1', message: `第${index + 1}条历史消息` })
+            // Set 方式
+            let newChatData = mockHistoryData.concat(this.chatData)
+            this.set('chatData', newChatData)
+            this.async(() => {
+              // 滚动至原来滚动条所在地
+              Polymer.dom(this.root).querySelectorAll('chat-box')[mockHistoryData.length - 1].scrollIntoView()
+            }, 0)
+            mescroll.endSuccess(mockHistoryData.length)
+            this.set('showMore', true)
+          }, 1000)
+        }
+        const mescroll = new MeScroll('message-container', {
+          //第一个参数"mescroll"对应上面布局结构div的id
+          //如果下拉刷新是重置列表数据,那么down完全可以不用配置
+          down: {
+            use: true, //是否初始化下拉刷新; 默认true
+            auto: true, //是否在初始化完毕之后自动执行下拉回调callback; 默认true
+            autoShowLoading: true,
+            isLock: true,
+            callback: downCallback //下拉刷新的回调
+          }
+        })
+      }
+    })
+  </script>
+</dom-module>
