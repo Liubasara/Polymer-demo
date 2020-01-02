@@ -1,0 +1,58 @@
+<link rel="import" href="./chat-list.html">
+<link rel="import" href="./chat-input.html">
+
+<dom-module id="chatting-room">
+  <template>
+
+    <style>
+      :host .wrapper {
+        height: 100%;
+      }
+      :host .container {
+        height: 100%;
+      }
+    </style>
+
+    <div class="wrapper">
+      <div class="container">
+        <div style="height: 584.8px;">
+          <chat-list chat-data="{{chatData}}" need-analysis="[[needAnalysis]]" />
+        </div>
+        <div style="height: 165px; width: 410px;">
+          <template is="dom-if" if="[[!withoutChatInput]]" restamp>
+            <chat-input />
+          </template>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'chatting-room',
+      properties: {
+        chatData: {
+          type: Array,
+          value: () => {
+            return new Array(20).fill(1).map((item, index) => parseInt(Math.random() * (2),10) ? { id: '0', content: `我发的第${index + 1}条消息`, name: '吴冠超', avatarUrl: 'test', isSuccess: !!parseInt(Math.random() * (2),10) } : { id: '1', content: `接收的第${index + 1}条消息`, name: '苏美尔', avatarUrl: 'test', isSuccess: !!parseInt(Math.random() * (2),10) })
+          }
+        },
+        needAnalysis: {
+          type: Boolean
+        },
+        withoutChatInput: {
+          type: Boolean,
+          value: false
+        }
+      },
+      listeners: {
+        'send-message': 'sendMessage'
+      },
+      // FIXME:
+      sendMessage (event, msg) {
+        event && event.stopPropagation()
+        this.push('chatData', { id: '0', content: msg ? msg.content : '发信息',name: '吴冠超', avatarUrl: 'test', isSuccess: !!parseInt(Math.random() * (2),10) })
+      }
+    })
+  </script>
+</dom-module>

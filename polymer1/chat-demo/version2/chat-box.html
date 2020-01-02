@@ -1,0 +1,237 @@
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-base-behavior.html">
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-crud-behavior.html">
+<link rel="import" href="../../xqt/demand_match/demand-price-input-index.html">
+
+<dom-module id="chat-box">
+  <template>
+
+    <style>
+      .chat-box-container {
+        margin-bottom: 15.9px;
+        padding: 0 15px;
+        display: flex;
+      }
+      :host .self {
+        flex-direction: row-reverse;
+      }
+      :host .user-info-wrapper {
+        text-align: center;
+        color: #595757;
+      }
+      :host .chat-box-avatar {
+        position: relative;
+        top: 13px;
+      }
+      :host .chat-box-name {
+        position: relative;
+        top: 28px;
+      }
+      :host .avatar-container {
+        width: 46px;
+        height: 47px;
+      }
+      :host .chat-box-avatar .user-name {
+        margin-top: 7px;
+      }
+      :host .message-wrapper {
+        position: relative;
+      }
+      :host .message-time-container {
+        font-size: 12px;
+        color:rgba(181,181,182,1);
+      }
+      :host .self .message-time-container {
+        margin-right: 13.1px;
+        text-align: right;
+      }
+      :host .others .message-time-container {
+        margin-left: 13.1px;
+      }
+      :host .message-content-wrapper {
+        margin: 0 13.1px;
+        position: relative;
+      }
+      :host .message-content-container {
+        padding: 14px;
+        max-width: 270px;
+        background: rgba(255,255,255,1);
+        border-radius: 5px;
+        cursor: pointer;
+        word-break: break-all;
+      }
+      :host .self .message-content-container {
+        background:rgba(190,239,255,1);
+      }
+      :host .others .message-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 32px;
+        left: 7px;
+        width: 0px;
+        height: 0px;
+        border-top: 6.5px solid transparent;
+        border-bottom: 6.5px solid transparent;
+        border-right: 6.5px solid rgba(255, 255, 255, 1);
+      }
+      :host .self .message-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 32px;
+        right: 7px;
+        width: 0px;
+        height: 0px;
+        border-top: 6.5px solid transparent;
+        border-bottom: 6.5px solid transparent;
+        border-left: 6.5px solid rgba(190,239,255,1);
+      }
+      :host .self .message-status-container {
+        position: absolute;
+        top: 30px;
+        left: -22.5px;
+      }
+      :host .others .message-status-container {
+        position: absolute;
+        top: 30px;
+        right: -24px;
+      }
+      :host .chat-box-menu-wrapper {
+        z-index: 1;
+        position: absolute;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #fff;
+        border: 1px solid lightblue;
+        width: 77px;
+        height: 30px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      :host .chat-box-menu-wrapper:active {
+        background-color: lightblue;
+        color: white;
+      }
+    </style>
+    <div class$="chat-box-container [[isMySelf(entity.id)]]">
+      <div class$="user-info-wrapper [[userInfoClass(entity.avatarUrl)]]">
+        <template is="dom-if" if="[[hasAvatar(entity.avatarUrl)]]">
+          <div class="avatar-container"><img src="./assets/imgs/avatar0.jpg" alt="头像" height="100%" width="100%" style="border-radius: 50%;border:1px solid rgba(0,91,175,1);"></div>
+        </template>
+        <div class="user-name">[[entity.name]]</div>
+      </div>
+      <div class="message-wrapper">
+        <div class="message-time-container">昨天19:25</div>
+        <div class="message-content-wrapper">
+          <div class="message-content-container" id="message-content-container" on-click="showMenuButton">
+            <template is="dom-if" if="[[showText(entity)]]">
+              <pre style="margin: 0;white-space: pre-wrap;">[[entity.content]]</pre>
+            </template>
+            <template is="dom-if" if="[[showImg(entity)]]">
+              <img src$="[[entity.content]]" width="100%" height="100%">
+            </template>
+          </div>
+          <div class="chat-box-menu-wrapper" id="chat-box-menu" on-click="handleParsing" style="display: none;">解析</div>
+        </div>
+        <template is="dom-if" if="[[entity.isSuccess]]">
+          <div class="message-status-container">
+            <img src="./assets/imgs/error.png">
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-box',
+      properties: {
+        entity: {
+          type: Object,
+          notify: true
+        },
+        showMenu: {
+          type: Boolean,
+          value: false
+        },
+        /** 解析功能，默认 false **/
+        needAnalysis: {
+          type: Boolean
+        }
+      },
+      attached () {
+        const thisEle = Polymer.dom(this).node
+        const chatBoxLists = thisEle.parentElement.querySelectorAll('chat-box')
+        if (this.entity.shouldScroll && chatBoxLists[chatBoxLists.length - 1] === thisEle) {
+          this.async(() => {
+            // scrollIntoView 不适用于多个进度条存在的情况
+            // thisEle.scrollIntoView()
+            thisEle.parentElement.scrollTop = thisEle.offsetTop - thisEle.parentElement.offsetTop
+          }, 150)
+        }
+      },
+      // FIXME:
+      isMySelf (id) {
+        return id === '0' ? 'self' : 'others'
+      },
+      // FIXME:
+      userInfoClass (avatarUrl) {
+        return avatarUrl === 'test' ? 'chat-box-avatar' : 'chat-box-name'
+      },
+      hasAvatar (avatarUrl) {
+        return avatarUrl === 'test'
+      },
+      showMenuButton (e) {
+        e.stopPropagation()
+        if (!this.needAnalysis) return
+        const chatBoxMenuEle = Polymer.dom(this).node.querySelector('#chat-box-menu')
+        if (this.showMenu) {
+          this.set('showMenu', false)
+          chatBoxMenuEle.style.display = 'none'
+          return
+        }
+        this.set('showMenu', true)
+        chatBoxMenuEle.style.top = event.offsetY + 'px'
+        chatBoxMenuEle.style.left = event.offsetX + 'px'
+        chatBoxMenuEle.style.display = ''
+      },
+      // FIXME: 判断图片 url 逻辑
+      showImg (entity) {
+        return /data:image\//.test(entity.content)
+      },
+      showText (entity) {
+        return !this.showImg(entity)
+      },
+      handleParsing (e) {
+        const chatBoxMenuEle = Polymer.dom(this).node.querySelector('#chat-box-menu')
+        this.set('showMenu', false)
+        chatBoxMenuEle.style.display = 'none'
+        this.analysis()
+      },
+      analysis () {
+        // 联调解析接口，打开弹窗
+        const IS_IMAGE = this.showImg(this.entity)
+        const IS_TEXT = this.showText(this.entity)
+        let self = this
+        let editorView = ''
+        const params = {
+          pictureName: null,
+          qqMessage: '',
+          // FIXME: regionId
+          regionId: 1
+        }
+        let mockImgSrc = null
+        if (IS_IMAGE) {
+          // FIXME: 处理图片
+          mockImgSrc = "http://hw-local-sandbox.com/ueditor/jsp/upload/image/20191231/1577762293344057728.png"
+          params.pictureName = mockImgSrc
+          editorView = `<img src="${mockImgSrc}"/>`
+        }
+        if (IS_TEXT) {
+          // 处理文字
+          params.qqMessage = this.entity.content
+          editorView = this.entity.content
+        }
+        this.fire('message-analysis', { params })
+      }
+    })
+  </script>
+</dom-module>

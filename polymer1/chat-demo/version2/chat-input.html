@@ -1,0 +1,155 @@
+<dom-module id="chat-input">
+  <template>
+
+    <style>
+      /* 滚动条相关 */
+      :host ::-webkit-scrollbar {
+        display: block;
+        width: 6px;
+        height: 6px;
+      }
+      :host ::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
+        height: 46px;
+      }
+      :host ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      :host * {
+        box-sizing: border-box;
+      }
+      :host .input-textarea {
+        padding-right: 22px;
+        padding-left: 25px;
+        padding-top: 10px;
+        height: 100%;
+        width: calc(100% - 1px);
+        overflow-y: scroll;
+        color: #595757;
+      }
+      :host .input-textarea:focus {
+        outline: none;
+      }
+      :host .input-container {
+        position: relative;
+        padding-bottom: 58.5px;
+        height: 100%;
+      }
+      :host .send-button-container {
+        position: absolute;
+        bottom: 16.9px;
+        right: 21px;
+        width:68px;
+        height:28px;
+      }
+      :host .send-button {
+        width: 100%;
+        height: 100%;
+        color: white;
+        background: rgba(0,150,235,1);
+        border: none;
+        cursor: pointer;
+      }
+      :host .send-button:active {
+        background: rgb(0, 105, 235);
+      }
+    </style>
+    <div class="input-container">
+      <div
+        class="input-textarea"
+        id="input-textarea"
+        contenteditable="true"
+        on-keydown="handleInputKeyDown"
+        on-paste="pasteIntoTextArea"
+        on-blur="handleTextAreaBlur"
+        on-focus="handleTextAreaFocus"
+      ></div>
+      <div class="send-button-container">
+        <button class="send-button" on-click="sendMessage">发送</button>
+      </div>
+    </div>
+    
+
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-input',
+      properties: {
+        chatInputText: {
+          type: String,
+          value: '',
+          notify: true
+        },
+        chatInputImgs: {
+          type: Array,
+          value: () => [],
+          notify: true
+        }
+      },
+      ready() {
+        let inputTextArea = Polymer.dom(this.root).querySelector('#input-textarea')
+        inputTextArea.addEventListener('input', this.textAreaChange.bind(this))
+      },
+      sendMessage () {
+        this.chatInputText.trim() &&
+            this.fire('send-message', { content: this.chatInputText })
+        this.chatInputImgs.forEach(item => {
+          this.fire('send-message', { content: item })
+        })
+        Polymer.dom(this.root).querySelector('#input-textarea').innerHTML = ''
+      },
+      handleTextAreaBlur (e) {
+        if (document.activeElement !== e.target) {
+          Polymer.dom(this.root).querySelector('.input-container').style.outline = ''
+        }
+      },
+      handleTextAreaFocus (e) {
+        if (document.activeElement === e.target) {
+          Polymer.dom(this.root).querySelector('.input-container').style.outline = '-webkit-focus-ring-color auto 1px'
+        }
+      },
+      handleInputKeyDown(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+          this.sendMessage()
+        }
+      },
+      textAreaChange() {
+        const textArea = Polymer.dom(this.root).querySelector('#input-textarea')
+        let imgLists = textArea.querySelectorAll('img')
+        this.set(
+          'chatInputImgs',
+          [...imgLists].map(item => item.src)
+        )
+        this.set('chatInputText', textArea.innerText)
+      },
+      pasteIntoTextArea(e) {
+        e.stopPropagation()
+        const self = this
+        const { items, types } = e.clipboardData || e.originalEvent.clipboardData
+        // 如果包含文件内容
+        if (types.indexOf('Files') > -1) {
+          e.preventDefault()
+          for (let index = 0; index < items.length; index++) {
+            const item = items[index]
+            if (item.kind === 'file') {
+              const file = item.getAsFile()
+              if (file) {
+                const reader = new FileReader()
+                const image = new Image()
+                reader.onloadend = function handleLoad () {
+                  image.src = this.result
+                  Polymer.dom(self.root).querySelector('#input-textarea').appendChild(image)
+                  /** 触发 textAreaChange **/
+                  self.textAreaChange()
+                }
+                /** 触发 loadend **/
+                reader.readAsDataURL(file)
+              }
+            }
+          }
+        }
+      }
+    })
+  </script>
+</dom-module>
