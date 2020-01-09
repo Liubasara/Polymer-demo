@@ -37,9 +37,9 @@
       handleInputKeyDown(e) {
         if (e.ctrlKey && e.key === 'Enter') {
           this.chatInputText.trim() &&
-            this.fire('send-message', { message: this.chatInputText })
+            this.fire('send-message', { content: this.chatInputText })
           this.chatInputImgs.forEach(item => {
-            this.fire('send-message', { message: item })
+            this.fire('send-message', { content: item })
           })
         }
       },
@@ -76,6 +76,32 @@
                 reader.readAsDataURL(file)
               }
             }
+          }
+        }
+        this.pasteText(e)
+      },
+      pasteText (e) {
+        // 处理复制纯文本
+        e.preventDefault()
+        let text
+        let clp = (e.originalEvent || e).clipboardData
+        if (clp === undefined || clp === null) {
+          text = window.clipboardData.getData('text') || ''
+          if (text !== '') {
+            if (window.getSelection) {
+              let newNode = document.createTextNode(text)
+              window
+                .getSelection()
+                .getRangeAt(0)
+                .insertNode(newNode)
+            } else {
+              document.selection.createRange().pasteHTML(text)
+            }
+          }
+        } else {
+          text = clp.getData('text/plain') || ''
+          if (text !== '') {
+            document.execCommand('insertText', false, text)
           }
         }
       }
