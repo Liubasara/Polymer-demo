@@ -1,0 +1,203 @@
+<link rel="import" href="./chat-list.html">
+<link rel="import" href="./chat-input.html">
+<link rel="import" href="../chat-history/chatting-room-history.html"/>
+
+<dom-module id="chatting-room">
+  <template>
+
+    <style>
+      :host .wrapper {
+        height: 100%;
+      }
+      :host .container {
+        height: 100%;
+      }
+    </style>
+
+    <div class="wrapper">
+      <div class="container">
+        <div style$="[[listStyle]]">
+          <chat-list
+            chat-data="{{chatData}}"
+            need-analysis="[[needAnalysis]]"
+            show-members="[[showMembers]]"
+            analysis-region-id="[[analysisRegionId]]"
+            chat-config="[[chatConfig]]"
+          />
+        </div>
+        <div style$="[[inputStyle]]">
+          <template is="dom-if" if="[[!withoutChatInput]]" restamp>
+            <chat-input chat-config="[[chatConfig]]" />
+          </template>
+          <template is="dom-if" if="[[withoutChatInput]]">
+            <chatting-room-history chat-config="[[chatConfig]]"></chatting-room-history>
+          </template>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'chatting-room',
+      properties: {
+        listStyle: {
+          type: String,
+          value: 'height: 584.8px;'
+        },
+        inputStyle: {
+          type: String,
+          value: 'height: 165px; width: 410px;'
+        },
+        chatData: {
+          type: Array,
+          value: () => []
+        },
+        allConfig: {
+          type: Object,
+          value: () => ({})
+        },
+        chatConfig: {
+          type: Object,
+          value: () => {
+            return {
+              title: '点击左侧联系人开始聊天',
+              title1: '',
+              fromUserId: null,
+              fromStaffId: null,
+              toUserIds: [],
+              groupIds: [],
+              toStaffIds: []
+            }
+          }
+        },
+        needAnalysis: {
+          type: Boolean
+        },
+        showMembers: {
+          type: Boolean,
+          value: false
+        },
+        analysisRegionId: {
+          type: Number
+        },
+        withoutChatInput: {
+          type: Boolean,
+          value: false
+        }
+      },
+      listeners: {
+        'send-message': 'handleSendMessage',
+        'update-upload-image': 'handleUpdateUploadImage'
+      },
+      handleUpdateUploadImage (e, { result }) {
+        Polymer.dom(this).node.querySelector('chat-list').updateUploadImage(result)
+      },
+      handleSendMessage (e, { params }) {
+        switch (this.chatConfig.chatType) {
+          case 'QQgroup':
+          case 'group':
+            message = {
+              "fromUser": {
+                "avatarUrl": this.allConfig.user.avatarUrl,
+                "id": this.allConfig.user.id,
+                "name": this.allConfig.user.name,
+                "supplierCustomerId": null,
+                "type": 1, // 代表自己
+              },
+              "fromUserId": this.chatConfig.fromUserId,
+              "groupId": this.chatConfig.groupIds[0],
+              "isSuccess": 1,
+              "success": 1,
+              "sendDate": new Date().getTime(),
+              "toUserId": null
+            }
+            break
+          case 'private':
+            message = {
+              "fromUser": {
+                "avatarUrl": this.allConfig.user.avatarUrl,
+                "id": this.allConfig.user.id,
+                "name": this.allConfig.user.name,
+                "supplierCustomerId": null,
+                "type": 1,
+              },
+              "fromUserId": this.chatConfig.fromUserId,
+              "groupId": null,
+              "isSuccess": 1,
+              "success": 1,
+              "sendDate": new Date().getTime(),
+              "toUserId": this.chatConfig.toUserIds[0]
+            }
+            break
+          default:
+            return
+        }
+        message.userDisplayName = this.allConfig.userDisplayName
+        message.uuid = params.uuid
+        message.content = params.body.content
+        message.contentType = params.body.contentType
+        message.isLoading = true
+        this.push('chatData', message)
+      },
+      startChat (chatConfig) {
+        // 聊天类型：1: 好友消息（以前的群聊） 2: QQ群聊 0: 私聊
+        this.resetChat()
+        this.set('allConfig', chatConfig)
+        switch (chatConfig.type) {
+          case 1:
+            // this.set('needAnalysis', true)
+            this.set('chatConfig', {
+              chatType: 'group',
+              conversationNo: chatConfig.conversationNo,
+              title: chatConfig.group.qqFriendUser.name,
+              title1: chatConfig.group.purchaserStaff.name,
+              fromUserId: chatConfig.userId,
+              groupIds: [chatConfig.groupId],
+              group: chatConfig.group
+            })
+            break
+          case 2:
+            // this.set('needAnalysis', true)
+            this.set('showMembers', true)
+            this.set('chatConfig', {
+              chatType: 'QQgroup',
+              conversationNo: chatConfig.conversationNo,
+              title: chatConfig.group.group.name,
+              fromUserId: chatConfig.userId,
+              groupIds: [chatConfig.groupId],
+              group: chatConfig.group
+            })
+            break
+          case 0:
+            this.set('chatConfig', {
+              chatType: 'private',
+              conversationNo: chatConfig.conversationNo,
+              title: chatConfig.oppUser.name,
+              fromUserId: chatConfig.userId,
+              toUserIds: [chatConfig.oppUserId]
+            })
+            break
+          default:
+            return
+        }
+        Polymer.dom(this).node.querySelector('chat-list')._fetchData().then(data => this.set('chatData', data))
+      },
+      resetChat () {
+        this.set('showMembers', false)
+        // 解析功能只有采购端有
+        // this.set('needAnalysis', false)
+        this.set('chatConfig', {
+          chatType: '',
+          title: '',
+          title1: '',
+          fromUserId: null,
+          fromStaffId: null,
+          toUserIds: [],
+          groupIds: []
+        })
+        this.set('chatData', [])
+      }
+    })
+  </script>
+</dom-module>
