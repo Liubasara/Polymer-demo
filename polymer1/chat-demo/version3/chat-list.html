@@ -152,11 +152,31 @@
       observers: [
         'observerChatData(chatData.*)'
       ],
+      listeners: {
+        'update-analysis': '_refreshAnalysisList'
+      },
       qqSocketConnectTimeChanged () {
-        // 断线重连，获取最后一条非 loading 数据时间戳之后的所有数据
+        this._toFetchData()
+      },
+      // websocket 断开连接后，主动通过轮询方式获取信息
+      qqSocketErrorTimeChanged () {
+        const self = this
+        const loopFetchData = ()=> {
+          if (self.tempQQWebsocket && self.tempQQWebsocket.readyState !== 1) {
+            console.log(`主动获取消息`)
+            self._toFetchData()
+            setTimeout(debounceLoopFetchData, 1300)
+          }
+        }
+        const debounceLoopFetchData = self.throttleFn(loopFetchData, 500)
+        debounceLoopFetchData()
+      },
+      // 聊天窗口，获取最后一条非 loading 数据时间戳之后的所有数据
+      _toFetchData: function () {
+        // 断线重连/连接异常，获取最后一条非 loading 数据时间戳之后的所有数据
         const realChatData = this.chatData.filter(item => !item.isLoading)
         const lastData = realChatData.slice(-1)
-        const params = { start: 0, limit: 999, conversationNo: this.chatConfig.conversationNo, sendDateStart: lastData.sendDate }
+        const params = { start: 0, limit: 999, conversationNo: this.chatConfig.conversationNo, sendDateStart: lastData && lastData[0] && lastData[0].sendDate }
         if(!params.conversationNo || !params.sendDateStart) {
           return
         }
@@ -184,6 +204,11 @@
         // 接收到消息时，根据当前用户来修改接收到消息的备注名
         msg.fromUserDisplayName = msg.fromUserDisplayNameList.find(item => item.userId === this.chatConfig.fromUserId).name
       },
+      pushChatData (msgData) {
+        if (!this.chatData.find(item => item.id === msgData.id)) {
+          this.push('chatData', msgData)
+        }
+      },
       updateQqMsgShow (msg) {
         let newMsg = JSON.parse(JSON.stringify(msg))
         const receiveConversation = this.getConversationNoByMsg(newMsg.data)
@@ -195,7 +220,7 @@
             if (this.chatConfig.fromUserId === newMsg.data.fromUserId) {
               this.updateChatData(newMsg)
             } else {
-              this.push('chatData', newMsg.data)
+              this.pushChatData(newMsg.data)
             }
           }
         } else {
@@ -214,7 +239,7 @@
         } else {
           messageIndex = this.chatData.findIndex(item => item.uuid === msg.data.uuid)
         }
-        messageIndex !== -1 ? this.splice('chatData', messageIndex, 1, msg.data) : this.push('chatData', msg.data)
+        messageIndex !== -1 ? this.splice('chatData', messageIndex, 1, msg.data) : this.pushChatData(msg.data)
       },
       getConversationNoByMsg (msg) {
         const { fromUserId, toUserId, groupId } = msg
@@ -319,6 +344,9 @@
       },
       _isStranger: function (value) {
         return !!value
+      },
+      _refreshAnalysisList: function () {
+        this._fetchData({start: this.chatData.length, limit: 20})
       }
     })
   </script>

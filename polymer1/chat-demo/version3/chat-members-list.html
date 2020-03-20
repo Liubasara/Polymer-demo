@@ -106,10 +106,19 @@
       _sendMsgToStranger: function () {
         const toGroupMembers = []
         const selectedValue = this.selectMenu
+        const msg = document.querySelector('#msg-input').value
+        if (!selectedValue || JSON.stringify(selectedValue) === '{}') {
+          this.hTip.error('还没有选择群成员~')
+          return
+        }
+        if (!msg.trim()) {
+          this.hTip.error('发送内容为空，不能发送')
+          return
+        }
         const params = {
           toQQFriendList: [],
           toGroupMembers: [{username: selectedValue.username, userQQ: selectedValue.userQQ}],
-          body: {contentType: 1, content: document.querySelector('#msg-input').value}
+          body: {contentType: 1, content: msg}
         }
         this.updateComplexEntity('/suChat/demand/sendMultiPurchaserMessage.do', params, (data) => {
           this.hTip.success('发送成功')

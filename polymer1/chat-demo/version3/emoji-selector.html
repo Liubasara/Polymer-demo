@@ -44,7 +44,8 @@
 
             :host iron-icon {
                 color: #999999;
-                margin: 2px;
+                margin: 2px 5px 2px 12px;
+                cursor: pointer;
             }
         </style>
         <div class="selector">
@@ -87,6 +88,11 @@
             },
             ready: function () {
                 this._formatListName()
+              $(document).click(function () {   //点击表情包列表以外的地方，表情包列表页面关闭
+                if(document.querySelector('emoji-selector')){
+                  document.querySelector('emoji-selector').isShowSelector = false
+                }
+              })
             },
             _formatListName: function () {
                 const nameList = this.fileNameList.map(ele => {
@@ -100,11 +106,12 @@
             },
             _selectEmoji: function (e) {
                 const itemId = '###' + (e.target.dataArgs.id) + '###'
-                this.toggleSelector()
+                this.toggleSelector(e)
                 this.fire('selected-emoji', itemId)
             },
-            toggleSelector: function () {
-                this.set('isShowSelector', !this.isShowSelector)
+            toggleSelector: function (e) {
+              e.stopPropagation() // 阻止冒泡
+              this.set('isShowSelector', !this.isShowSelector)
             }
         })
     </script>

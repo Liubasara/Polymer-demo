@@ -25,14 +25,16 @@
             chat-config="[[chatConfig]]"
           />
         </div>
-        <div style$="[[inputStyle]]">
-          <template is="dom-if" if="[[!withoutChatInput]]" restamp>
-            <chat-input chat-config="[[chatConfig]]" />
-          </template>
-          <template is="dom-if" if="[[withoutChatInput]]">
-            <chatting-room-history chat-config="[[chatConfig]]"></chatting-room-history>
-          </template>
-        </div>
+        <template is="dom-if" if="[[getChatInput(chatConfig)]]">
+          <div style$="[[inputStyle]]">
+            <template is="dom-if" if="[[!withoutChatInput]]" restamp>
+              <chat-input chat-config="[[chatConfig]]" />
+            </template>
+            <template is="dom-if" if="[[withoutChatInput]]">
+              <chatting-room-history chat-config="[[chatConfig]]"></chatting-room-history>
+            </template>
+          </div>
+        </template>
       </div>
     </div>
   </template>
@@ -150,7 +152,7 @@
             this.set('chatConfig', {
               chatType: 'group',
               conversationNo: chatConfig.conversationNo,
-              title: chatConfig.group.qqFriendUser.name,
+              title: chatConfig.group.supplierQQRemark || chatConfig.group.qqFriendUser.name,
               title1: chatConfig.group.purchaserStaff.name,
               fromUserId: chatConfig.userId,
               groupIds: [chatConfig.groupId],
@@ -197,6 +199,10 @@
           groupIds: []
         })
         this.set('chatData', [])
+      },
+      // 没有点击联系人时，不显示聊天输入框
+      getChatInput(chatConfig){
+        return chatConfig.title !== '点击左侧联系人开始聊天'
       }
     })
   </script>

@@ -167,7 +167,23 @@
           <div class="message-content-wrapper">
             <div class="message-content-container" id="message-content-container" on-click="showMenuButton">
               <template is="dom-if" if="[[showText(entity)]]">
-                <pre class="content-text-container" id="[[entity.id]]"></pre>
+                <!-- PS: 为保证格式，以下注释不可格式化或删除 -->
+                <pre class="content-text-container"><!--
+                --><template is="dom-repeat" items="[[entityContentList]]"><!--
+                    --><template is="dom-if" if="[[contentIsLink(item)]]"><!--
+                      --><a href="[[item]]" target="_blank">[[item]]</a><!--
+                    --></template><!--
+                    --><template is="dom-if" if="[[contentIsHttpsLink(item)]]"><!--
+                      --><a href="[[generateHttpsLink(item)]]" target="_blank">[[item]]</a><!--
+                    --></template><!--
+                    --><template is="dom-if" if="[[contentIsQQEmoji(item)]]"><!--
+                      --><img src="[[generateQQEmojiSrc(item)]]"/><!--
+                    --></template><!--
+                    --><template is="dom-if" if="[[contentIsText(item)]]"><!--
+                      -->[[item]]<!--
+                    --></template><!--
+                --></template><!--
+            --></pre>
                 <template is="dom-if" if="[[showLink(entity)]]">
                   <a href="{{entity.link}}" target="_blank">查看详情</a>
                 </template>
@@ -206,6 +222,10 @@
           type: Object,
           observer: 'handleScroll'
         },
+        entityContentList: {
+          type: Array,
+          value: []
+        },
         showMenu: {
           type: Boolean,
           value: false
@@ -217,6 +237,77 @@
         analysisRegionId: {
           type: Number
         }
+      },
+      observers: ['entityChangeEntityContentList(entity)'],
+      entityChangeEntityContentList (data) {
+        const cpData = JSON.parse(JSON.stringify(data))
+        let contentList = this.formatDataToListByRegs(cpData)
+        this.set('entityContentList', contentList)
+      },
+      formatDataToListByRegs (data) {
+        let { content } = data
+        const SPLIT_MARK = '%mMaArRkK%'
+        // 正则替换匹配
+        content = this.replaceOssLinkByRegs(content) // OSS 的 Link 需要通过查看详情的方式来显示
+        content = this.replaceLinkByRegs(content, SPLIT_MARK)
+        content = this.replaceQQEmojiByRegs(content, SPLIT_MARK)
+        // 根据分隔符生成列表
+        let contentList = content.split(SPLIT_MARK)
+        if (contentList[0] === '') {
+          contentList = contentList.slice(1)
+        }
+        return contentList
+      },
+      replaceQQEmojiByRegs (content, markSymbol) {
+        content = content.replace(/###([0-9]*)###/g, $emoji => markSymbol + $emoji + markSymbol)
+        return content
+      },
+      replaceOssLinkByRegs (content) {
+        if (content.indexOf('/members/demandPurchase.html') != -1) {
+          if(window.location.host != 'oss.kuaisuwang.com.cn') {
+            this.entity.link = 'http://' + window.location.host.substring(2) + '/members/demandPurchase.html'
+          } else {
+            this.entity.link = 'https://www.isuwang.com/members/demandPurchase.html'
+          }
+          content = content.replace(/[a-zA-z]+:\/\/[^\s]*/g, '')
+        }
+        return content
+      },
+      replaceLinkByRegs (content, markSymbol) {
+        const SRC_REG_EXP = /[a-zA-z]+:\/\/[^\s]*/g //匹配url
+        const NO_HTTP_REG_EXP = /[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\.?/  // 匹配域名
+        const URL_FINAL_REG_EXP = /\.(com|net|edu|gov|org|biz|cn|mil|info|pro|museum|int)$/    // 域名后缀判断，不符合的不转换成超链接
+
+        const self = this
+        const noHttpSrc = NO_HTTP_REG_EXP.test(content)?`https://${content.match(NO_HTTP_REG_EXP)[0]}`:''
+        if(SRC_REG_EXP.test(content)){
+          // 匹配非过单url，并转换成超链接
+          content = content.replace(SRC_REG_EXP,function ($url) {
+            return markSymbol + $url + markSymbol
+          })
+        } else if (NO_HTTP_REG_EXP.test(content) && URL_FINAL_REG_EXP.test(noHttpSrc)) {
+          content = content.replace(NO_HTTP_REG_EXP,function ($url) {
+            return markSymbol + $url + markSymbol
+          })
+        }
+        return content
+      },
+      contentIsLink (content) {
+        return /[a-zA-z]+:\/\/[^\s]*/g.test(content) //匹配url
+      },
+      contentIsHttpsLink (content) {
+        const NO_HTTP_REG_EXP = /[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\.?/  // 匹配域名
+        const URL_FINAL_REG_EXP = /\.(com|net|edu|gov|org|biz|cn|mil|info|pro|museum|int)$/    // 域名后缀判断，不符合的不转换成超链接
+
+        const noHttpSrc = NO_HTTP_REG_EXP.test(content)?`https://${content.match(NO_HTTP_REG_EXP)[0]}`:''
+        var tmp = !this.contentIsLink(content) && NO_HTTP_REG_EXP.test(content) && URL_FINAL_REG_EXP.test(noHttpSrc)
+        return tmp
+      },
+      contentIsQQEmoji (content) {
+        return /###([0-9]*)###/g.test(content)
+      },
+      contentIsText (content) {
+        return (!this.contentIsLink(content) && !this.contentIsHttpsLink(content) && !this.contentIsQQEmoji(content))
       },
       attached () {
         this.handleScroll(this.entity)
@@ -232,16 +323,15 @@
         const thisEle = Polymer.dom(this).node
         if (thisEle.parentElement) {
           this.async(() => {
-            const chatBoxLists = thisEle.parentElement.querySelectorAll('chat-box')
-            if (entity.shouldScroll && chatBoxLists[chatBoxLists.length - 1] === thisEle) {
-              // scrollIntoView 不适用于多个进度条存在的情况
-              // thisEle.scrollIntoView()
-              thisEle.parentElement.scrollTop = thisEle.offsetTop - thisEle.parentElement.offsetTop
+            if (entity.shouldScroll) {
+              const chatBoxLists = thisEle.parentElement.querySelectorAll('chat-box')
+              if (chatBoxLists[chatBoxLists.length - 1] === thisEle) {
+                // scrollIntoView 不适用于多个进度条存在的情况
+                // thisEle.scrollIntoView()
+                thisEle.parentElement.scrollTop = thisEle.offsetTop - thisEle.parentElement.offsetTop
+              }
             }
-          }, 150)
-          if(entity.contentType !== 2){
-            this. _formatText(entity.id, entity.content)
-          }
+          }, 300)
         }
       },
       isMySelf (entity, chatConfig) {
@@ -280,7 +370,7 @@
        * @returns {boolean}
        */
       showLink (entity) {
-          return !!entity.link
+        return !!entity.link
       },
       showText (entity) {
         return !this.showImg(entity)
@@ -344,11 +434,27 @@
             wordList: wordList,
             editorView: editorView
           }
+          if (wordList.length <= 0) {
+            self.hTip.error('error: 无法找到任何词性, 无法解析报价')
+            return
+          }
           // 打开弹窗
           self.openDialog('demand-price-input-index', dialogObj, self, 'View', '1240px')
+          self._updateToHasAnalysis(self.entity.id)
         }, function (res) {
           self.hTip.error('error:' + res.responseText)
         }, false)
+      },
+      // 更新为已解析
+      _updateToHasAnalysis: function (id){
+        const self = this
+        const param = {
+          userId: (window.parent.uc.biz || window.parent.parent.uc.biz).messageUserId,
+          messageId: id
+        }
+        self.updateEntity('/suChat/conversation/resolveAbleQuoteMessageById.do', param, function (res) {
+          self.fire('update-analysis')
+        })
       },
       _resetDeliveryType: function (val) {
         if (val === 0) {
@@ -364,39 +470,16 @@
           this.query('/newcrm/crmcustomers/findCustomerByIds.do?', { customerId: id }, data => resolve(data[0].companyId), false, false)
         })
       },
-      // text格式匹配表情包
-      _formatText: function (id, content) {
-        // content = content.replace(/\</g,'&lt;')
-        // content = content.replace(/\>/g,'&gt;')
-        // content = content.replace(/\n/g,'<br/>')
-        if (content.indexOf('/members/demandPurchase.html') != -1) {
-          if(window.location.host != 'oss.kuaisuwang.com.cn') {
-            this.entity.link = 'http://' + window.location.host.substring(2) + '/members/demandPurchase.html'
-          } else {
-            this.entity.link = 'https://www.isuwang.com/members/demandPurchase.html'
-          }
-          const reg = new RegExp(/(http|https):\/\/([\w.]+\/?)\S*/, 'g')
-          content = content.replace(reg, '')
-        }
-        content = content.replace(/###([0-9]*)###/g, "_SPLIT-FLAG_IMG-FLAG$1_SPLIT-FLAG_")
-        content.split('_SPLIT-FLAG_').forEach(ele => {
-          if (!!ele) {
-            if (ele.indexOf('IMG-FLAG') !== -1) {
-              let img = document.createElement("img")
-              const imgId = ele.replace(/[^\d]/g,'')
-              img.src = window.basePath + '/working_platform/chatting-room/assets/imgs/emoji/'+ imgId + '.png'
-              setTimeout(()=>{
-                document.getElementById(id + '').appendChild(img)
-              }, 200)
-            } else {
-              let span = document.createElement("span")
-              span.innerText = ele
-              setTimeout(()=>{
-                document.getElementById(id + '').appendChild(span)
-              }, 200)
-            }
-          }
-        })
+      getContentId: function (entity) {
+        const {uuid, id} = entity
+        return id ? id : uuid
+      },
+      generateHttpsLink (link) {
+        return `https://${link}`
+      },
+      generateQQEmojiSrc (content) {
+        let imgId = content.replace(/[^\d]/g,'')
+        return window.basePath + '/working_platform/chatting-room/assets/imgs/emoji/'+ imgId + '.png'
       }
     })
   </script>
