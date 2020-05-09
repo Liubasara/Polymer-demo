@@ -1,0 +1,355 @@
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-crud-behavior.html">
+<script src="./assets/js/mescroll.min.js"></script>
+<link rel="stylesheet" href="./assets/css/mescroll.min.css">
+
+<dom-module id="chat-list">
+  <link rel="import" href="./chat-box.html">
+  <link rel="import" href="./chat-members-list.html">
+  <template>
+
+    <style>
+      /* 滚动条相关 */
+      :host ::-webkit-scrollbar {
+        display: block;
+        width: 6px;
+        height: 6px;
+      }
+      :host ::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
+        height: 46px;
+      }
+      :host ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      :host .chat-list-container {
+        height: 100%;
+      }
+      :host .list-container {
+        height: calc(100% - 50px);
+        padding: 17.3px 0;
+        background: #F5F5F5;
+        overflow-y: scroll;
+      }
+      :host .title-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        box-shadow: 0px 0px 1px 0px rgba(164,164,164,0.51);
+      }
+      :host .title-container {
+        display: flex;
+        height: 50px;
+        padding-left: 17px;
+        align-items: center;
+        color: rgba(89,87,87,1);
+        font-size: 18px;
+        font-weight: bold;
+        width: 80%;
+      }
+      :host .title1-container {
+        max-width: calc(100% - 100px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      :host .title2-container {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      :host .members-button-wrapper {
+        position: absolute;
+        top: 13px;
+        right: 0;
+      }
+      :host .members-button-container {
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+      }
+      :host .more-button {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto 5px;
+        width: 100px;
+        height: 25px;
+        color: white;
+        background-color: #DADADA;
+        border-radius: 5px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .is-stranger{
+        font-size: 16px;
+        margin-left: 10px;
+        color: darkgray;
+      }
+    </style>
+
+    <div class="chat-list-container">
+      <div class="title-wrapper">
+        <template is="dom-if" if="[[_isStranger(chatConfig.group.group.isStranger)]]">
+          <span class="is-stranger">临时会话</span>
+        </template>
+        <div class="title-container">
+          <div class="title1-container" title="[[chatConfig.title]]">
+            [[chatConfig.title]]
+          </div>
+          <template is="dom-if" if="[[chatConfig.title1]]" restamp>
+            <div class="title2-container" title="[[chatConfig.title1]]">
+              <img src="./assets/imgs/895.png">
+              [[chatConfig.title1]]
+            </div>
+          </template>
+          <template is="dom-if" if="[[_isShowMembers(showMembers, chatConfig.groupIds)]]" restamp>
+            <div class="members-button-wrapper">
+              <div class="members-button-container" on-click="openMembersDialog">
+                <img src="./assets/imgs/menu.png" width="100%" height="100%">
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="list-container" id="list-container" on-click="handleListContainerClick">
+        <template is="dom-if" if="[[showMoreButtonVisible(showMore, chatData)]]">
+          <div class="more-button" on-click="pullDown">加载更多消息</div>
+        </template>
+        <template is="dom-repeat" items="[[chatData]]">
+          <chat-box entity="[[item]]" chat-config="[[chatConfig]]" need-analysis="[[needAnalysis]]" analysis-region-id="[[analysisRegionId]]" />
+        </template>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-list',
+      behaviors: [OBaseBehavior, OCrudBehavior, QqMsgPublishSubscribeBehavior],
+      properties: {
+        chatConfig: {
+          type: Object
+        },
+        chatData: {
+          type: Array,
+          value: () => [],
+          notify: true
+        },
+        showMore: {
+          type: Boolean,
+          value: true
+        },
+        needAnalysis: {
+          type: Boolean,
+          value: false
+        },
+        analysisRegionId: {
+          type: Number
+        },
+        showMembers: Boolean
+      },
+      observers: [
+        'observerChatData(chatData.*)'
+      ],
+      listeners: {
+        'update-analysis': '_refreshAnalysisList'
+      },
+      qqSocketConnectTimeChanged () {
+        this._toFetchData()
+      },
+      // websocket 断开连接后，主动通过轮询方式获取信息
+      qqSocketErrorTimeChanged () {
+        const self = this
+        const loopFetchData = ()=> {
+          if (self.tempQQWebsocket && self.tempQQWebsocket.readyState !== 1) {
+            console.log(`主动获取消息`)
+            self.debounce("_toFetchQQData", self._toFetchData, 500)
+            window.clearTimeout(window.loopFetchDataTimeoutId)
+            window.loopFetchDataTimeoutId =  window.setTimeout(loopFetchData, 1300)
+          }
+        }
+        loopFetchData()
+        // const debounceLoopFetchData = self.throttleFn(loopFetchData, 500)
+        // debounceLoopFetchData()
+      },
+      // 聊天窗口，获取最后一条非 loading 数据时间戳之后的所有数据
+      _toFetchData: function () {
+        // 断线重连/连接异常，获取最后一条非 loading 数据时间戳之后的所有数据
+        const realChatData = this.chatData.filter(item => !item.isLoading)
+        const lastData = realChatData.slice(-1)
+        const params = { start: 0, limit: 999, conversationNo: this.chatConfig.conversationNo, sendDateStart: lastData && lastData[0] && lastData[0].sendDate }
+        if(!params.conversationNo || !params.sendDateStart) {
+          return
+        }
+        this._fetchData(params).then(data => {
+          const newChatData = realChatData.concat(data)
+          this.set('chatData', newChatData)
+        })
+      },
+      // 群聊时需要手动上传图片，上传完毕后会调用该方法来判断图片是否上传成功
+      updateUploadImage (params) {
+        let messageIndex = this.chatData.findIndex(item => item.uuid === params.data.uuid)
+        if (messageIndex !== -1) {
+          if (params.meta.success) {
+            this.set(`chatData.${messageIndex}.content`, params.data.url)
+          } else {
+            this.set(`chatData.${messageIndex}.isLoading`, false)
+            this.set(`chatData.${messageIndex}.isSuccess`, false)
+          }
+        }
+      },
+      _isShowMembers (showMembers, groupIds) {
+        return showMembers && groupIds[0]
+      },
+      formatMemoName (msg) {
+        // 接收到消息时，根据当前用户来修改接收到消息的备注名
+        msg.fromUserDisplayName = msg.fromUserDisplayNameList.find(item => item.userId === this.chatConfig.fromUserId).name
+      },
+      pushChatData (msgData) {
+        if (!this.chatData.find(item => item.id === msgData.id)) {
+          this.push('chatData', msgData)
+        }
+      },
+      updateQqMsgShow (msg) {
+        let newMsg = JSON.parse(JSON.stringify(msg))
+        const receiveConversation = this.getConversationNoByMsg(newMsg.data)
+        if (newMsg.meta.success) {
+          if (this.chatConfig.conversationNo === receiveConversation) {
+            // 接收到推送消息后，根据当前用户 Id 对备注名进行修改
+            this.formatMemoName(newMsg.data)
+            // 判断是否自己的消息，是的话根据 uuid 修改 loading 状态
+            if (this.chatConfig.fromUserId === newMsg.data.fromUserId) {
+              this.updateChatData(newMsg)
+            } else {
+              this.pushChatData(newMsg.data)
+            }
+          }
+        } else {
+          if (newMsg.meta.message.includes('Data too long')) {
+            this.hTip.error('输入内容过长，请重新输入')
+            return
+          }
+          this.hTip.error(newMsg.meta.message)
+        }
+      },
+      updateChatData (msg) {
+        let messageIndex
+        if (this.chatConfig.chatType === 'QQgroup') {
+          // Q群聊特殊处理，由于后端无法传回 uuid，所以通过消息内容比对来找到对应序号
+          messageIndex = this.chatData.findIndex(item => item.content === msg.data.content && item.isLoading === true)
+        } else {
+          messageIndex = this.chatData.findIndex(item => item.uuid === msg.data.uuid)
+        }
+        messageIndex !== -1 ? this.splice('chatData', messageIndex, 1, msg.data) : this.pushChatData(msg.data)
+      },
+      getConversationNoByMsg (msg) {
+        const { fromUserId, toUserId, groupId } = msg
+        if (groupId && groupId > 0) {
+          // 群聊
+          return `g-${this.chatConfig.fromUserId}-${groupId}`
+        } else {
+          // 私聊
+          if (toUserId === this.chatConfig.fromUserId &&  this.chatConfig.toUserIds && fromUserId === this.chatConfig.toUserIds[0]) {
+            // 对方给自己发消息，也应该是相同的房间号
+            return `s-${toUserId}-${fromUserId}`
+          }
+          return `s-${fromUserId}-${toUserId}`
+        }
+      },
+      showMoreButtonVisible (showMore, chatData) {
+        return showMore && ( chatData.length > 0 )
+      },
+      observerChatData (val) {
+        if (val.base.length > 0) {
+          /** 滚动相关 **/
+          let shouldScroll = false
+          let messageConstainer = Polymer.dom(this).node.querySelector('#list-container')
+          val.base.forEach(item => item.shouldScroll = shouldScroll)
+          if (messageConstainer) {
+            let { scrollHeight, clientHeight, scrollTop } = messageConstainer
+            shouldScroll = (val.base[val.base.length - 1].fromUserId === this.chatConfig.fromUserId
+                  || scrollHeight === clientHeight
+                  || scrollTop === 0
+                  || clientHeight * 2 > scrollHeight - scrollTop)
+                  && (this.showMore || this.showMore === undefined)
+            val.base[val.base.length - 1].shouldScroll = shouldScroll
+          }
+        }
+      },
+      pullDown (e) {
+        this.set('showMore', false)
+        const listContainerElem = Polymer.dom(this).node.querySelector('#list-container')
+        const downCallback = () => {
+          this._fetchData({ start: this.chatData.length, limit: 20 }).then(historyData => {
+            if (historyData.length === 0) {
+              // 无历史数据
+              mescroll.endSuccess(historyData.length)
+              this.set('showMore', true)
+              this.hTip.alert('无更多历史记录')
+              return
+            }
+            // Set 方式
+            let newChatData = historyData.concat(this.chatData)
+            this.set('chatData', newChatData)
+            this.async(() => {
+              // 滚动至原来滚动条所在地
+              // scrollIntoView 不适用于多个进度条存在的情况
+              // Polymer.dom(this).node.querySelectorAll('chat-box')[historyData.length - 1].scrollIntoView()
+              listContainerElem.scrollTop = Polymer.dom(this).node.querySelectorAll('chat-box')[historyData.length - 1].offsetTop - listContainerElem.offsetTop
+            }, 0)
+            mescroll.endSuccess(historyData.length)
+            this.set('showMore', true)
+          })
+        }
+        const mescroll = new MeScroll(listContainerElem, {
+          //第一个参数"mescroll"对应上面布局结构div的id
+          //如果下拉刷新是重置列表数据,那么down完全可以不用配置
+          down: {
+            use: true, //是否初始化下拉刷新; 默认true
+            auto: true, //是否在初始化完毕之后自动执行下拉回调callback; 默认true
+            autoShowLoading: true,
+            isLock: true,
+            callback: downCallback //下拉刷新的回调
+          }
+        })
+      },
+      _fetchData ({start = 0, limit = 20, conversationNo = this.chatConfig.conversationNo, ...otherParams} = {}) {
+        return new Promise((resolve, reject) => {
+          const url = '/suChat/findConversationMessagePage.do'
+          const params = { start, limit, conversationNo, ...otherParams }
+          this.query(url, params, data => {
+            resolve(data.rows)
+          }, (error) => {console.log(error)} , null)
+        })
+      },
+      handleListContainerClick (e) {
+        if (this.needAnalysis) {
+          // 取消所有解析框
+          Polymer.dom(this).node
+            .querySelector('#list-container')
+            .querySelectorAll('chat-box')
+            .forEach(item => {
+              item.set('showMenu', false)
+           })
+        }
+      },
+      openMembersDialog () {
+        this.openDialogByConfig({
+          contentElement: 'chat-members-list',
+          dialogParam: {groupId: this.chatConfig.groupIds[0]},
+          width: '450px',
+          height: '700px',
+          entity: {},
+          parentNode: this
+        })
+      },
+      _isStranger: function (value) {
+        return !!value
+      },
+      _refreshAnalysisList: function () {
+        this._fetchData({start: this.chatData.length, limit: 20})
+      }
+    })
+  </script>
+</dom-module>

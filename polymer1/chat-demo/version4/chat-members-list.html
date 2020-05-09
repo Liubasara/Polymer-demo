@@ -1,0 +1,177 @@
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-crud-behavior.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../platform/custom-element/O2/o-staff-radio/o-staff-radio.html">
+<link rel="import" href="../../platform/custom-element/O2/o-menu/o-menu-group-send.html">
+
+<dom-module id="chat-members-list">
+  <template>
+    <style>
+      :host .members-list-container {
+        height: 100%;
+      }
+      :host .menu-title{
+        word-break: keep-all;
+        white-space: nowrap;
+        margin: 10px 0px;
+      }
+      :host .head-img {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        object-fit: cover;
+        vertical-align: middle;
+        margin: 0px 10px;
+      }
+      :host .sign {
+        display: inline-block;
+        width: 50px;
+        height: 20px;
+        font-size: 12px;
+        color: white;
+        text-align: center;
+        line-height: 20px;
+      }
+      :host .background-orange {
+        background-color: orange;
+      }
+      :host .background-green {
+        background-color: green;
+      }
+      .group-list{
+        height: 360px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+      }
+      :host .chat-window {
+        width: 100%;
+        border: 1px solid #F2F2F2;
+        height: 130px;
+      }
+      :host o-staff-radio ::content .search-input{
+        width: 100%;
+      }
+      :host .decorate {
+        width: 100%;
+        height: 30px;
+        display: block;
+        background-color: #F2F2F2;
+      }
+    </style>
+
+    <div class="members-list-container">
+      <h3 class="menu-title">群聊成员 ([[memberList.length]])</h3>
+
+      <div class="group-list">
+        <o-staff-radio staff-tree="[[memberList]]" entity="{{selectMenu}}" is-show-label="{{isStranger}}"
+                       require-query="{{requireQuery}}" keyword="{{keyword}}"></o-staff-radio>
+      </div>
+      <div>
+        <span class="decorate"></span>
+        <group-send-chat-input cancel-title="关闭"></group-send-chat-input>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'chat-members-list',
+      behaviors: [OCrudBehavior],
+      properties: {
+        memberList: {
+          type: Array,
+          value: []
+        },
+        isStranger: {
+          type: Boolean,
+          value: true
+        },
+        requireQuery: {
+          type: Boolean,
+          value: true
+        },
+        sendMsgBody: {
+          type: String,
+          value: ''
+        },
+        // 选中的对象
+        selectMenu: {
+          type: Object,
+          value: function () {
+            return {}
+          }
+        },
+        dialogParam: {
+          type: Object,
+          value: function () {
+            return {}
+          },
+          observer: '_dialogParamChanged'
+        }
+      },
+      listeners:{
+        'cancel-group-send-dialog':'cancelDialog',
+        'group-send-message':'_sendMsgToStranger'
+      },
+      _sendMsgToStranger: function (e,{ messageParam }) {
+        const toGroupMembers = []
+        const selectedValue = this.selectMenu
+        const msg = messageParam.content
+        if (!selectedValue || JSON.stringify(selectedValue) === '{}') {
+          this.hTip.error('还没有选择群成员~')
+          return
+        }
+        if (!msg.trim()) {
+          this.hTip.error('发送内容为空，不能发送')
+          return
+        }
+        const params = {
+          toQQFriendList: [],
+          toGroupMembers: [{username: selectedValue.username, userQQ: selectedValue.userQQ}],
+          body: {contentType: messageParam.contentType, content: msg}
+        }
+        this.updateComplexEntity('/suChat/demand/sendMultiPurchaserMessage.do', params, (data) => {
+          this.hTip.success('发送成功')
+          this.cancel()
+        }, (error) => {
+          this.hTip.error(error.responseText)
+        })
+      },
+      isNormal: function (item) {
+        return !item.isOwner && !item.isManager
+      },
+      _dialogParamChanged: function (dialogParam) {
+        if(dialogParam.groupId) {
+          this._queryGroupMemberList(dialogParam.groupId)
+        }
+      },
+      /**
+       * 查询群聊成员列表
+       * */
+      _queryGroupMemberList: function (groupId) {
+        const self = this
+        const params = { groupId: groupId, staffId: window.parent.uc.biz.currUser.id }
+        this.query('/suChat/conversation/staffQQGroupMembers.do', params, function (data) {
+          const formatList = data.map(ele => {
+            return {
+              name: ele.username,
+              checked: false,
+              value: ele.id,
+              children:[],
+              ...ele
+            }
+          })
+          console.log('formatList', formatList)
+          self.set('memberList', formatList)
+        }, function (XMLHttpRequest) {
+          self.hTip.confirm(XMLHttpRequest.responseText)
+        })
+      },
+      isEqual: function(role, value) {
+        return role === value
+      },
+      cancelDialog: function () {
+        this.cancel()
+      }
+    })
+  </script>
+</dom-module>

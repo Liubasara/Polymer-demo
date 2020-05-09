@@ -1,0 +1,450 @@
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-crud-behavior.html">
+<link rel="import" href="../personal_work_platform/base64-attachment-util-behavior.html">
+<link rel="import" href="../../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../../bower_components/iron-icons/editor-icons.html">
+<link rel="import" href="./chat-tool-bar.html">
+
+<dom-module id="chat-input">
+  <template>
+
+    <style>
+      /* 滚动条相关 */
+      :host ::-webkit-scrollbar {
+        display: block;
+        width: 6px;
+        height: 6px;
+      }
+      :host ::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
+        height: 46px;
+      }
+      :host ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      :host * {
+        box-sizing: border-box;
+      }
+      :host .input-textarea {
+        padding-right: 15px;
+        padding-left: 15px;
+        padding-top: 10px;
+        height: 100%;
+        width: calc(100% - 1px);
+        overflow-y: scroll;
+        color: #595757;
+      }
+      :host .input-textarea:focus {
+        outline: none;
+      }
+      :host .input-container {
+        position: relative;
+        padding-bottom: 58.5px;
+        height: 100%;
+      }
+      :host .send-button-container {
+        position: absolute;
+        bottom: 16.9px;
+        right: 21px;
+        width: 380px;
+        height: 28px;
+        text-align: right;
+      }
+      :host .send-button {
+        width: 68px;
+        height: 100%;
+        color: white;
+        background: rgba(0,150,235,1);
+        border: none;
+        cursor: pointer;
+      }
+      :host .send-button:active {
+        background: rgb(0, 105, 235);
+      }
+      :host .display-flex{
+        display: flex;
+      }
+      .gray{color: #707070}
+    </style>
+    <div class="input-container">
+      <chat-tool-bar chat-config="[[chatConfig]]" toolbar-config="[[toolbarConfig]]"></chat-tool-bar>
+      <div
+        class="input-textarea"
+        id="input-textarea"
+        contenteditable="true"
+        on-keydown="handleInputKeyDown"
+        on-paste="pasteIntoTextArea"
+        on-blur="handleTextAreaBlur"
+        on-focus="handleTextAreaFocus"
+      ></div>
+      <div class="send-button-container">
+        <span class="gray">Enter发送，Ctrl+Enter换行</span>
+        <button class="send-button" on-click="sendMessage">发送</button>
+      </div>
+    </div>
+
+
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-input',
+      behaviors: [OCrudBehavior, Base64AttachmentUtilBehavior, QqMsgPublishSubscribeBehavior],
+      properties: {
+        chatConfig: {
+          type: Object,
+          observer:'_chatConfigChange'
+        },
+        toolbarConfig: {
+          type: Object
+        },
+        chatInputText: {
+          type: String,
+          value: '',
+          notify: true
+        },
+        chatInputImgs: {
+          type: Array,
+          value: () => [],
+          notify: true
+        },
+        currRange: {
+          type: Object,
+          value: null
+        }
+      },
+      listeners: {
+        'selected-emoji': 'textAreaChange'
+      },
+      _chatConfigChange(newVal){
+        setTimeout(()=>{
+          if(newVal && document.querySelector('#input-textarea')){
+            // 点击联系人时，输入框聚焦
+            document.querySelector('#input-textarea').focus()
+          }
+        },200)
+      },
+      ready() {
+        let inputTextArea = Polymer.dom(this).node.querySelector('#input-textarea')
+        inputTextArea.addEventListener('input', this.textAreaChange.bind(this))
+      },
+      getNewUuid () {
+        return Math.random().toString(36).substr(2) + '-' + new Date().getTime()
+      },
+      saveAttachmentCallback (result) {
+        // 上传回调，进行发送
+        let params = this.formatSendingMessage(result.data.url, 2)
+        if (!params) {
+          return
+        }
+        params.attachmentIsUrl = true
+        params.body.content = result.data.url
+        params.uuid = result.data.uuid
+        this.toSendMsg(params)
+        this.fire('update-upload-image', { result })
+      },
+      formatSendingMessage (content, contentType) {
+        let params = {}
+        switch (this.chatConfig.chatType) {
+          case 'QQgroup':
+          case 'group':
+            params = {
+              fromUserId: this.chatConfig.fromUserId,
+              groupIds: this.chatConfig.groupIds
+            }
+            break
+          case 'private':
+            params = {
+              fromUserId: this.chatConfig.fromUserId,
+              toUserIds: this.chatConfig.toUserIds
+            }
+            break
+          default:
+            return null
+        }
+        params.uuid = this.getNewUuid() // 生成该条信息的唯一标识符，用于判断 loading 状态
+        params.body = {
+          contentType,
+          content
+        }
+        return params
+      },
+      sendMessage () {
+        this.set('chatInputText', this._replaceEmojiToText())
+        if (this.chatInputText.length > 600) {
+          this.hTip.error('输入内容过长，请重新输入')
+          return
+        }
+        let _send = (content, contentType) => {
+          let params = this.formatSendingMessage(content, contentType)
+          if (!params) {
+            console.log('大家就当无事发生过')
+            return
+          }
+          this.toSendMsg(params)
+          this.fire('send-message', { params })
+        }
+        this.chatInputText.trim() &&
+          _send(this.chatInputText, 1)
+        this.chatInputImgs.forEach(item => {
+          if (this.chatConfig.chatType === 'QQgroup') {
+            // 如果是 QQ 群聊，需要手动进行图片上传后再发送
+            let params = this.formatSendingMessage(item, 2)
+            if (!params) {
+              console.log('大家就当无事发生过')
+              return
+            }
+            this.saveAttachment({ uuid: params.uuid, base64: params.body.content })
+            this.fire('send-message', { params })
+            return
+          }
+          _send(item, 2)
+        })
+        this.clearInputArea()
+      },
+      handleTextAreaBlur (e) {
+        if (document.activeElement !== e.target) {
+          Polymer.dom(this).node.querySelector('.input-container').style.outline = ''
+        }
+        this.saveRange(e.target)
+      },
+      saveRange (ele) {
+        // 保存当前选区以插入图片
+        const selection = window.getSelection()
+        let range
+        if (selection.getRangeAt && selection.rangeCount) {
+          range = selection.getRangeAt(0)
+        } else {
+          range = window.createRange()
+        }
+        this.set('currRange', { ele, range })
+      },
+      handleTextAreaFocus (e) {
+        if (document.activeElement === e.target) {
+          Polymer.dom(this).node.querySelector('.input-container').style.outline = '-webkit-focus-ring-color auto 1px'
+        }
+      },
+      handleInputKeyDown(e) {
+        if (!e.ctrlKey && e.key === 'Enter') {
+          this.sendMessage()
+        }
+        if (e.ctrlKey && e.key === 'Enter') {
+          if (this.browserType() === "IE" || this.browserType() === "Edge") {
+            // this.$[`input-textarea`].appendChild("<div></div>");
+            this.$[`input-textarea`].innerHTML += "<div></div>"
+          }
+          else if (this.browserType() === "FF") {
+            // this.$[`input-textarea`].appendChild("<br/><br/>");
+            this.$[`input-textarea`].innerHTML += "<br/><br/>"
+          } else {
+            // this.$[`input-textarea`].appendChild("<div><br/></div>");
+            this.$[`input-textarea`].innerHTML += "<div><br/></div>"
+          }
+          //设置输入焦点
+          const o = this.$[`input-textarea`].lastChild;
+          const textbox = this.$[`input-textarea`];
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(textbox);
+          range.collapse(false);
+          range.setEndAfter(o);//
+          range.setStartAfter(o);//
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      },
+      textAreaChange(e) {
+        const textArea = Polymer.dom(this).node.querySelector('#input-textarea')
+        let imgLists = textArea.querySelectorAll('img:not(.emoji-img)')
+        this.set(
+          'chatInputImgs',
+          [...imgLists].map(item => item.src)
+        )
+        if (e && e.detail) {
+          // 表情
+          let img = document.createElement("img")
+          const imgId = e.detail.replace(/[^\d]/g,'')
+          const imgUrl = window.basePath + '/working_platform/chatting-room/assets/imgs/emoji/'+ imgId + '.png'
+          this.insertImageToTextArea(imgUrl, false)
+        }
+        this.set('chatInputText', this.formatMessage(textArea.innerText))
+      },
+      // 插入图片至当前光标处
+      insertImageToTextArea (src, isImage = true) {
+        if (!this.currRange) {
+          if (!src) return
+          const image = new Image()
+          image.src = src
+          Polymer.dom(this).node.querySelector('#input-textarea').appendChild(image)
+        }
+        let range = this.currRange.range
+        // 创建需追加到光标处节点的文档片段
+        // isImage 用于区分该图片是否为表情包（表情包需要变成文字处理）
+        let fragment = range.createContextualFragment(`<img ${!isImage && 'class="emoji-img"'} src="${src}">`)
+        // 将创建的文档片段插入到光标处
+        range.insertNode(fragment.lastChild)
+        this.setFocus($("#input-textarea"));
+      },
+      // 光标定位到文本内容最后的位置
+      setFocus(el) {
+        el = el[0] // jquery 对象转dom对象  
+        el.focus()
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        range.collapse(false)
+        const sel = window.getSelection()
+        //判断光标位置，如不需要可删除
+        if(sel.anchorOffset !== 0){
+          return
+        }
+        sel.removeAllRanges()
+        sel.addRange(range)
+      },
+      pasteIntoTextArea(e) {
+        e.stopPropagation()
+        const self = this
+        const { items, types } = e.clipboardData || e.originalEvent.clipboardData
+        // 如果包含文件内容
+        if (types.indexOf('Files') > -1) {
+          e.preventDefault()
+          for (let index = 0; index < items.length; index++) {
+            const item = items[index]
+            if (item.kind === 'file') {
+              const file = item.getAsFile()
+              if (file) {
+                const reader = new FileReader()
+                const image = new Image()
+                reader.onloadend = function handleLoad () {
+                  // image.src = this.result
+                  self.saveRange()
+                  self.insertImageToTextArea(this.result)
+                  // Polymer.dom(self.root).querySelector('#input-textarea').appendChild(image)
+                  /** 触发 textAreaChange **/
+                  self.textAreaChange()
+                }
+                /** 触发 loadend **/
+                reader.readAsDataURL(file)
+              }
+            }
+          }
+        }
+        this.pasteText(e)
+      },
+      clearInputArea () {
+        const self = this
+        self.set('chatInputText', '')
+        self.set('chatInputImgs', [])
+        setTimeout(() => {
+          Polymer.dom(self).node.querySelector('#input-textarea').innerHTML = ''
+        }, 0)
+
+        // this.$[`input-textarea`].textContent = ''
+      },
+      formatMessage (message) {
+        /** 格式化 Message **/
+        let multiLines = message.split('\n')
+        if (multiLines.length > 1) {
+          /** 确保每行之间最多只有两个换行符 **/
+          multiLines = multiLines.reduce((acc, curr) => {
+            if (acc.length === 0) {
+              if (curr === '') {
+                return acc
+              }
+              acc.push(curr)
+              return acc
+            }
+            if (acc[acc.length - 1] === '' && curr === '') {
+              return acc
+            }
+            acc.push(curr)
+            return acc
+          }, [])
+          return multiLines.join('\r\n')
+        }
+        return multiLines.join('\r\n')
+      },
+      pasteText (e) {
+        // 处理复制纯文本
+        e.preventDefault()
+        let text
+        let clp = (e.originalEvent || e).clipboardData
+        if (clp === undefined || clp === null) {
+          text = window.clipboardData.getData('text') || ''
+          if (text !== '') {
+            if (window.getSelection) {
+              let newNode = document.createTextNode(text)
+              window
+                .getSelection()
+                .getRangeAt(0)
+                .insertNode(newNode)
+            } else {
+              document.selection.createRange().pasteHTML(text)
+            }
+          }
+        } else {
+          text = clp.getData('text/plain') || ''
+          if (text !== '') {
+            document.execCommand('insertText', false, text)
+          }
+        }
+      },
+      // 表情包转换成text格式
+      _replaceEmojiToText: function () {
+        const emojiList = document.querySelectorAll('.emoji-img')
+        if (emojiList.length>0) {
+          const innerContent = document.querySelector('#input-textarea').childNodes
+          let formatContent = ''
+          innerContent.forEach(ele => {
+            if (ele.tagName === 'DIV') { // 遇到div标签代表换行
+              formatContent = formatContent + "\r\n"
+              ele.childNodes.forEach(ele2 => {
+                if (ele2.classList + '' === 'emoji-img') {
+                  const imgId = ele2.src.match(/emoji\/(\S*)\.png/)[1]
+                  formatContent = formatContent + '###' + imgId + '###'
+                } else if (ele2.nodeValue != null) {
+                  formatContent = formatContent + ele2.nodeValue
+                }
+              })
+            } else {
+              if (ele.classList + '' === 'emoji-img') {
+                const imgId = ele.src.match(/emoji\/(\S*)\.png/)[1]
+                formatContent = formatContent + '###' + imgId + '###'
+              } else if (ele.nodeValue != null) {
+                formatContent = formatContent + ele.nodeValue
+              }
+            }
+          })
+          return formatContent
+        } else {
+          return this.chatInputText
+        }
+      },
+      browserType: function() {
+        const userAgent = navigator.userAgent; //取得浏览器的userAgent字符串
+        let isOpera = false;
+        if (userAgent.indexOf('Edge') > -1) {
+          return "Edge";
+        }
+        if (userAgent.indexOf('.NET') > -1) {
+          return "IE";
+        }
+        if (userAgent.indexOf("Opera") > -1 || userAgent.indexOf("OPR") > -1) {
+          isOpera = true;
+          return "Opera"
+        }; //判断是否Opera浏览器
+        if (userAgent.indexOf("Firefox") > -1) {
+          return "FF";
+        } //判断是否Firefox浏览器
+        if (userAgent.indexOf("Chrome") > -1) {
+          return "Chrome";
+        }
+        if (userAgent.indexOf("Safari") > -1) {
+          return "Safari";
+        } //判断是否Safari浏览器
+        if (userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1 && !isOpera) {
+          return "IE";
+        }; //判断是否IE浏览器
+      }
+    })
+  </script>
+</dom-module>

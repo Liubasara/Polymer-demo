@@ -1,0 +1,514 @@
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-base-behavior.html">
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-crud-behavior.html">
+<link rel="import" href="../../platform/custom-element/behaviors/common/o-format-behavior.html">
+<link rel="import" href="../../xqt/demand_match/demand-price-input-index.html">
+
+<dom-module id="chat-box">
+  <template>
+
+    <style>
+      .chat-box-container {
+        margin-bottom: 13px;
+        padding: 0 15px;
+        display: flex;
+      }
+      :host .self {
+        flex-direction: row-reverse;
+      }
+      :host .user-info-wrapper {
+        text-align: center;
+        color: #595757;
+        max-width: 46px;
+      }
+      :host .chat-box-avatar {
+        position: relative;
+        top: 13px;
+      }
+      :host .chat-box-name {
+        position: relative;
+        top: 13px;
+      }
+      :host .avatar-container {
+        width: 46px;
+        height: 47px;
+        line-height: 47px;
+        cursor: pointer;
+      }
+      :host .name-avatar-container {
+        height: 100%;
+        width: 100%;
+        border-radius: 50%;
+        background-color: #1998e8;
+        color: white;
+      }
+      :host .user-name {
+        margin-top: 7px;
+        text-overflow: ellipsis;
+        width: 55px;
+        height: 25px;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      :host .message-wrapper {
+        position: relative;
+      }
+      :host .message-time-container {
+        margin-bottom: 8px;
+        font-size: 12px;
+        color:rgba(181,181,182,1);
+      }
+      :host .self .message-time-container {
+        margin-right: 13.1px;
+        text-align: right;
+      }
+      :host .others .message-time-container {
+        margin-left: 16px;
+      }
+      :host .message-info-wrapper {
+        margin: 0 13.1px;
+        position: relative;
+        display: flex;
+      }
+      :host .self .message-info-wrapper {
+        justify-content: flex-end;
+      }
+      :host .message-content-wrapper {
+        position: relative;
+      }
+      :host .message-content-container {
+        padding: 14px;
+        max-width: 270px;
+        background: rgba(255,255,255,1);
+        box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.05);
+        border-radius: 5px;
+        cursor: pointer;
+        word-break: break-word;
+        word-wrap: break-word;
+      }
+      :host .self .message-content-container {
+        background:rgba(190,239,255,1);
+      }
+      :host .content-text-container {
+        margin: 0;
+        white-space: pre-wrap;
+        line-height: 24px;
+        color: #595757;
+      }
+      :host .others .message-wrapper::before {
+        content: '';
+        z-index: 1;
+        position: absolute;
+        top: 32px;
+        left: 7px;
+        width: 0px;
+        height: 0px;
+        border-top: 6.5px solid transparent;
+        border-bottom: 6.5px solid transparent;
+        border-right: 6.5px solid rgba(255, 255, 255, 1);
+      }
+      :host .self .message-wrapper::before {
+        content: '';
+        z-index: 1;
+        position: absolute;
+        top: 32px;
+        right: 7px;
+        width: 0px;
+        height: 0px;
+        border-top: 6.5px solid transparent;
+        border-bottom: 6.5px solid transparent;
+        border-left: 6.5px solid rgba(190,239,255,1);
+      }
+      :host .self .message-status-container {
+        position: absolute;
+        top: 10px;
+        left: -39.5px;
+        width: 35px;
+        height: 35px;
+      }
+      :host .others .message-status-container {
+        position: absolute;
+        top: 9px;
+        right: -42px;
+        width: 35px;
+        height: 35px;
+      }
+      :host .chat-box-menu-wrapper {
+        z-index: 1;
+        position: absolute;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        background-color: #fff;
+        border: 1px solid lightblue;
+        width: 77px;
+        /*height: 60px;*/
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .chat-box-menu-wrapper-item{
+        width: 77px;
+        height: 30px;
+        line-height: 30px;
+        text-align: center;
+      }
+      :host .chat-box-menu-wrapper-item:active {
+        background-color: lightblue;
+        color: white;
+      }
+    </style>
+    <div class$="chat-box-container [[isMySelf(entity, chatConfig)]]">
+      <div class$="user-info-wrapper [[userInfoClass(entity)]]">
+        <div class="avatar-container" on-click="handleAvatarClick">
+          <template is="dom-if" if="[[hasAvatar(entity)]]">
+            <img src$="[[entity.fromUser.avatarUrl]]" alt="头像" height="100%" width="100%" style="border-radius: 50%;">
+          </template>
+          <template is="dom-if" if="[[!hasAvatar(entity)]]">
+            <div class="name-avatar-container" title="[[getUserName(entity)]]">[[getAvatarName(entity)]]</div>
+          </template>
+        </div>
+        <div class="user-name" title="[[getUserName(entity)]]">[[getUserName(entity)]]</div>
+      </div>
+      <div class="message-wrapper">
+        <div class="message-time-container">[[formatDate(entity.sendDate)]]</div>
+        <div class="message-info-wrapper">
+          <div class="message-content-wrapper">
+            <div class="message-content-container" id="message-content-container" on-click="showMenuButton">
+              <template is="dom-if" if="[[showText(entity)]]">
+                <!-- PS: 为保证格式，以下注释不可格式化或删除 -->
+                <pre class="content-text-container"><!--
+                --><template is="dom-repeat" items="[[entityContentList]]"><!--
+                    --><template is="dom-if" if="[[contentIsLink(item)]]"><!--
+                      --><a href="[[item]]" target="_blank">[[item]]</a><!--
+                    --></template><!--
+                    --><template is="dom-if" if="[[contentIsHttpsLink(item)]]"><!--
+                      --><a href="[[generateHttpsLink(item)]]" target="_blank">[[item]]</a><!--
+                    --></template><!--
+                    --><template is="dom-if" if="[[contentIsQQEmoji(item)]]"><!--
+                      --><img src="[[generateQQEmojiSrc(item)]]"/><!--
+                    --></template><!--
+                    --><template is="dom-if" if="[[contentIsText(item)]]"><!--
+                      -->[[item]]<!--
+                    --></template><!--
+                --></template><!--
+            --></pre>
+                <template is="dom-if" if="[[showLink(entity)]]">
+                  <a href="{{entity.link}}" target="_blank">查看详情</a>
+                </template>
+              </template>
+              <template is="dom-if" if="[[showImg(entity)]]">
+                <img src$="[[entity.content]]" width="100%" height="100%" on-click="_showImgViewerFromSale">
+              </template>
+            </div>
+            <template is="dom-if" if="[[showMenu]]">
+              <div class="chat-box-menu-wrapper" id="chat-box-menu">
+                <div class="chat-box-menu-wrapper-item" on-click="handleParsing">解析</div>
+                <template is="dom-if" if="[[showImg(entity)]]">
+                  <div class="chat-box-menu-wrapper-item" on-click="_showImgViewer">打开图片</div>
+                </template>
+              </div>
+            </template>
+            <template is="dom-if" if="[[!entity.isSuccess]]" restamp>
+              <div class="message-status-container">
+                <img src="./assets/imgs/error.png">
+              </div>
+            </template>
+            <template is="dom-if" if="[[entity.isLoading]]" restamp>
+              <div class="message-status-container">
+                <img src="./assets/imgs/loading.gif" width="100%" height="100%">
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-box',
+      behaviors: [OBaseBehavior, OFormatBehavior, OCrudBehavior],
+      properties: {
+        chatConfig: {
+          type: Object
+        },
+        entity: {
+          type: Object,
+          observer: 'handleScroll'
+        },
+        entityContentList: {
+          type: Array,
+          value: []
+        },
+        showMenu: {
+          type: Boolean,
+          value: false
+        },
+        /** 解析功能，默认 false **/
+        needAnalysis: {
+          type: Boolean
+        },
+        analysisRegionId: {
+          type: Number
+        }
+      },
+      observers: ['entityChangeEntityContentList(entity)'],
+      entityChangeEntityContentList (data) {
+        const cpData = JSON.parse(JSON.stringify(data))
+        let contentList = this.formatDataToListByRegs(cpData)
+        this.set('entityContentList', contentList)
+      },
+      formatDataToListByRegs (data) {
+        let { content } = data
+        const SPLIT_MARK = '%mMaArRkK%'
+        // 正则替换匹配
+        content = this.replaceOssLinkByRegs(content) // OSS 的 Link 需要通过查看详情的方式来显示
+        content = this.replaceLinkByRegs(content, SPLIT_MARK)
+        content = this.replaceQQEmojiByRegs(content, SPLIT_MARK)
+        // 根据分隔符生成列表
+        let contentList = content.split(SPLIT_MARK)
+        if (contentList[0] === '') {
+          contentList = contentList.slice(1)
+        }
+        return contentList
+      },
+      replaceQQEmojiByRegs (content, markSymbol) {
+        content = content.replace(/###([0-9]*)###/g, $emoji => markSymbol + $emoji + markSymbol)
+        return content
+      },
+      replaceOssLinkByRegs (content) {
+        if (content.indexOf('/members/demandPurchase.html') != -1) {
+          if(window.location.host != 'oss.kuaisuwang.com.cn') {
+            this.entity.link = 'http://' + window.location.host.substring(2) + '/members/demandPurchase.html'
+          } else {
+            this.entity.link = 'https://www.isuwang.com/members/demandPurchase.html'
+          }
+          content = content.replace(/[a-zA-z]+:\/\/[^\s]*/g, '')
+        }
+        return content
+      },
+      replaceLinkByRegs (content, markSymbol) {
+        const SRC_REG_EXP = /[a-zA-z]+:\/\/[^\s]*/g //匹配url
+        const NO_HTTP_REG_EXP = /[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\.?/  // 匹配域名
+        const URL_FINAL_REG_EXP = /\.(com|net|edu|gov|org|biz|cn|mil|info|pro|museum|int)$/    // 域名后缀判断，不符合的不转换成超链接
+
+        const self = this
+        const noHttpSrc = NO_HTTP_REG_EXP.test(content)?`https://${content.match(NO_HTTP_REG_EXP)[0]}`:''
+        if(SRC_REG_EXP.test(content)){
+          // 匹配非过单url，并转换成超链接
+          content = content.replace(SRC_REG_EXP,function ($url) {
+            return markSymbol + $url + markSymbol
+          })
+        } else if (NO_HTTP_REG_EXP.test(content) && URL_FINAL_REG_EXP.test(noHttpSrc)) {
+          content = content.replace(NO_HTTP_REG_EXP,function ($url) {
+            return markSymbol + $url + markSymbol
+          })
+        }
+        return content
+      },
+      contentIsLink (content) {
+        return /[a-zA-z]+:\/\/[^\s]*/g.test(content) //匹配url
+      },
+      contentIsHttpsLink (content) {
+        const NO_HTTP_REG_EXP = /[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\.?/  // 匹配域名
+        const URL_FINAL_REG_EXP = /\.(com|net|edu|gov|org|biz|cn|mil|info|pro|museum|int)$/    // 域名后缀判断，不符合的不转换成超链接
+
+        const noHttpSrc = NO_HTTP_REG_EXP.test(content)?`https://${content.match(NO_HTTP_REG_EXP)[0]}`:''
+        var tmp = !this.contentIsLink(content) && NO_HTTP_REG_EXP.test(content) && URL_FINAL_REG_EXP.test(noHttpSrc)
+        return tmp
+      },
+      contentIsQQEmoji (content) {
+        return /###([0-9]*)###/g.test(content)
+      },
+      contentIsText (content) {
+        return (!this.contentIsLink(content) && !this.contentIsHttpsLink(content) && !this.contentIsQQEmoji(content))
+      },
+      attached () {
+        this.handleScroll(this.entity)
+      },
+      getUserName (entity) {
+        return entity.fromUserDisplayName || entity.userDisplayName || entity.fromUser.name
+      },
+      getAvatarName (entity) {
+        const name = this.getUserName(entity)
+        return name.slice(-2)
+      },
+      handleScroll (entity) {
+        const thisEle = Polymer.dom(this).node
+        if (thisEle.parentElement) {
+          this.async(() => {
+            if (entity.shouldScroll) {
+              const chatBoxLists = thisEle.parentElement.querySelectorAll('chat-box')
+              if (chatBoxLists[chatBoxLists.length - 1] === thisEle) {
+                // scrollIntoView 不适用于多个进度条存在的情况
+                // thisEle.scrollIntoView()
+                thisEle.parentElement.scrollTop = thisEle.offsetTop - thisEle.parentElement.offsetTop
+              }
+            }
+          }, 300)
+        }
+      },
+      isMySelf (entity, chatConfig) {
+        if (chatConfig.chatType === 'group') {
+          // 群聊，只区分是否为内部人员
+          return entity.fromUser.type === 1 ? 'self' : 'others'
+        }
+        return entity.fromUserId === chatConfig.fromUserId ? 'self' : 'others'
+      },
+      userInfoClass (entity) {
+        return entity.fromUser.avatarUrl ? 'chat-box-avatar' : 'chat-box-name'
+      },
+      hasAvatar (entity) {
+        return !!entity.fromUser.avatarUrl
+      },
+      showMenuButton (e) {
+        e.stopPropagation()
+        if (!this.needAnalysis) return
+        if (this.showMenu) {
+          this.set('showMenu', false)
+          return
+        }
+        this.set('showMenu', true)
+        this.async(() => {
+          const chatBoxMenuEle = Polymer.dom(this).node.querySelector('#chat-box-menu')
+          chatBoxMenuEle.style.top = event.offsetY + 'px'
+          chatBoxMenuEle.style.left = event.offsetX + 'px'
+        }, 0)
+      },
+      showImg (entity) {
+        return entity.contentType === 2
+      },
+      /**
+       * 显示查看详情链接
+       * @param entity
+       * @returns {boolean}
+       */
+      showLink (entity) {
+        return !!entity.link
+      },
+      showText (entity) {
+        return !this.showImg(entity)
+      },
+      handleParsing (e) {
+        const chatBoxMenuEle = Polymer.dom(this).node.querySelector('#chat-box-menu')
+        this.set('showMenu', false)
+        this.analysis()
+      },
+      async analysis () {
+        // 联调解析接口，打开弹窗
+        // 除了好友消息以外，群聊消息也需要解析功能
+        if (this.chatConfig.chatType !== 'group' && this.chatConfig.chatType !== 'QQgroup') {
+          return
+        }
+        if (!this.entity.fromUser.supplierCustomerId) {
+          this.hTip.alert('不是供应商，无法解析')
+          return
+        }
+        let supplierId = await this._fetchCompanyIdByCustomerId(this.entity.fromUser.supplierCustomerId)
+        const IS_IMAGE = this.showImg(this.entity)
+        const IS_TEXT = this.showText(this.entity)
+        let self = this
+        let editorView = ''
+        const params = {
+          pictureName: null,
+          qqMessage: '',
+          regionId: this.analysisRegionId,
+          supplierId: supplierId
+        }
+        if (IS_IMAGE) {
+          params.pictureName = this.entity.content
+          editorView = `<img src="${this.entity.content}"/>`
+        }
+        if (IS_TEXT) {
+          // 处理文字
+          params.qqMessage = this.entity.content
+          editorView = this.entity.content.replace(/(\r\n|\n|\r)/gm , '<br/>')
+        }
+        this._dealPostParam(params)
+        const url = '/demandMatch/productOfferOnlineAnalysisForSupplier.do'
+        self.saveEntity(url, params, function (data) {
+          const { supplierId, messageId, wordList } = data
+          wordList.forEach(item => {
+            const productOffers = item.productOfferList || []
+            productOffers.forEach(productOffer => {
+              if (!productOffer.productId) {
+                productOffer.productId = undefined
+              }
+              if (!productOffer.designation) {
+                productOffer.designation = undefined
+              }
+              productOffer.stockStatus = 1
+              productOffer.deliveryType = self._resetDeliveryType(productOffer.deliveryType)
+              productOffer.noShowPicker = true // 解析报价仓库 页面初始化先不使用warehouse-picker组件
+              // productOffer.deliveryType = productOffer.deliveryType.toString()
+            })
+          })
+          const dialogObj = {
+            supplierId: supplierId,
+            messageId: messageId,
+            wordList: wordList,
+            editorView: editorView
+          }
+          if (wordList.length <= 0) {
+            self.hTip.error('error: 无法找到任何词性, 无法解析报价')
+            return
+          }
+          // 打开弹窗
+          self.openDialog('demand-price-input-index', dialogObj, self, 'View', '1240px')
+          self._updateToHasAnalysis(self.entity.id)
+        }, function (res) {
+          self.hTip.error(`error:${res.responseText}`)
+        }, false)
+      },
+      // 更新为已解析
+      _updateToHasAnalysis: function (id){
+        const self = this
+        const param = {
+          userId: (window.parent.uc.biz || window.parent.parent.uc.biz).messageUserId,
+          messageId: id
+        }
+        self.updateEntity('/suChat/conversation/resolveAbleQuoteMessageById.do', param, function (res) {
+          self.fire('update-analysis')
+        })
+      },
+      _resetDeliveryType: function (val) {
+        if (val === 0) {
+          return 1
+        } else if (val === 1) {
+          return 2
+        } else {
+          return null
+        }
+      },
+      _fetchCompanyIdByCustomerId (id) {
+        return new Promise((resolve, reject) => {
+          this.query('/newcrm/crmcustomers/findCustomerByIds.do?', { customerId: id }, data => resolve(data[0].companyId), false, false)
+        })
+      },
+      getContentId: function (entity) {
+        const {uuid, id} = entity
+        return id ? id : uuid
+      },
+      generateHttpsLink (link) {
+        return `https://${link}`
+      },
+      generateQQEmojiSrc (content) {
+        let imgId = content.replace(/[^\d]/g,'')
+        return window.basePath + '/working_platform/chatting-room/assets/imgs/emoji/'+ imgId + '.png'
+      },
+      _showImgViewer: function () {
+        const self = this
+        self.fire('show-viewer', self.entity.content)
+      },
+      _showImgViewerFromSale: function () {
+        const self = this
+        if (self.needAnalysis) {
+          return
+        }
+        self._showImgViewer()
+      },
+      handleAvatarClick () {
+        this.fire('chat-avatar-click', { chatConfig: { ...this.chatConfig }, entity: { ...this.entity } })
+      }
+    })
+  </script>
+</dom-module>

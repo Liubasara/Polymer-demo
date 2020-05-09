@@ -1,0 +1,118 @@
+<dom-module id="emoji-selector">
+    <template>
+
+        <style>
+            .selector {
+                position: relative;
+            }
+
+            .emoji-list {
+                position: absolute;
+                top: -276px;
+                left: -95px;
+                z-index: 2;
+                overflow: auto;
+                width: 506px;
+                height: 276px;
+                display: flex;
+                flex-wrap: wrap;
+                background: #fff;
+                border: 1px solid #d0d0d0;
+                padding: 5px;
+            }
+
+            .emoji-item {
+                cursor: pointer;
+                width: 54px;
+                height: 54px;
+                border: 1px solid #dcdcdc;
+                text-align: center;
+                line-height: 74px;
+            }
+
+            /*滚动条垂直方向的宽度*/
+            :host ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+
+            /* 垂直滚动条的滑动块 */
+            :host ::-webkit-scrollbar-thumb:vertical {
+                border-radius: 4px;
+                background-color: #e3e3e3;
+            }
+
+            :host iron-icon {
+                color: #999999;
+                margin: 2px 5px 2px 12px;
+                cursor: pointer;
+            }
+        </style>
+        <div class="selector">
+            <!--            <img src="./assets/imgs/bq-icon.png" on-click="toggleSelector">-->
+            <i class="search-icon" on-click="toggleSelector">
+                <iron-icon icon="editor:insert-emoticon"></iron-icon>
+            </i>
+            <template is="dom-if" if="{{isShowSelector}}">
+                <div class="emoji-list">
+                    <template is="dom-repeat" items="[[emojiList]]" index-as="index">
+                        <div class="emoji-item" data-args="{{item}}" on-click="_selectEmoji">
+                            <img src="{{item.src}}" data-args="{{item}}">
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+
+    </template>
+    <script>
+        Polymer({
+            is: 'emoji-selector',
+            behaviors: [OCrudBehavior, Base64AttachmentUtilBehavior, QqMsgPublishSubscribeBehavior],
+            properties: {
+                fileNameList: {
+                    type: Array,
+                    value: function () {
+                        return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 46, 49, 53, 54, 55, 56, 57, 59, 60, 61, 63, 64, 66, 67, 69, 74, 75, 76, 77, 78, 79, 85, 86, 89, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 136, 137, 138, 140, 144, 145, 146, 147, 148, 151, 158, 168, 169, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213]
+                    }
+                },
+                emojiList: {
+                    type: Array,
+                    value: []
+                },
+                isShowSelector: {
+                    type: Boolean,
+                    value: false
+                }
+            },
+            ready: function () {
+                this._formatListName()
+              $(document).click(function () {   //点击表情包列表以外的地方，表情包列表页面关闭
+                if(document.querySelector('emoji-selector')){
+                  document.querySelector('emoji-selector').isShowSelector = false
+                }
+              })
+            },
+            _formatListName: function () {
+                const nameList = this.fileNameList.map(ele => {
+                    ele = {
+                        src: window.basePath + '/working_platform/chatting-room/assets/imgs/emoji/' + ele + '.png',
+                        id: ele
+                    }
+                    return ele
+                })
+                this.set('emojiList', nameList)
+            },
+            _selectEmoji: function (e) {
+                const itemId = '###' + (e.target.dataArgs.id) + '###'
+                this.toggleSelector(e)
+                this.fire('selected-emoji', itemId)
+            },
+            toggleSelector: function (e) {
+              e.stopPropagation() // 阻止冒泡
+              this.set('isShowSelector', !this.isShowSelector)
+            }
+        })
+    </script>
+</dom-module>

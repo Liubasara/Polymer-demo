@@ -1,0 +1,51 @@
+<!-- 聊天功能栏 -->
+<!-- 
+  包含功能：
+    - 表情选择 emoji
+    - 历史记录 history
+    - 议价  bargain
+    - 订货  orders
+ -->
+<link rel="import" href="./emoji-selector.html">
+<link rel="import" href="../chat-history/chatting-room-history.html"/>
+<link rel="import" href="../enquiry-work-platform/single-send/single-bargain.html"/>
+<link rel="import" href="../enquiry-work-platform/single-send/single-orders.html"/>
+
+<dom-module id="chat-tool-bar">
+  <template>
+
+    <style>
+      :host .display-flex{
+        display: flex;
+      }
+    </style>
+
+    <div class="display-flex">
+      <template is="dom-if" if="[[toolbarConfig.emoji]]">
+        <emoji-selector></emoji-selector>
+      </template>
+      <template is="dom-if" if="[[toolbarConfig.history]]">
+        <chatting-room-history chat-config="[[chatConfig]]"></chatting-room-history>
+      </template>
+      <template is="dom-if" if="[[toolbarConfig.bargain]]">
+        <single-bargain chat-config="[[chatConfig]]"></single-bargain>
+      </template>
+      <template is="dom-if" if="[[toolbarConfig.orders]]">
+        <single-orders chat-config="[[chatConfig]]"></single-orders>
+      </template>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'chat-tool-bar',
+      properties: {
+        chatConfig: {
+          type: Object
+        },
+        toolbarConfig: {
+          type: Object
+        }
+      }
+    })
+  </script>
+</dom-module>
