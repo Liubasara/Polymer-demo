@@ -57,6 +57,9 @@
         console.log('通过属性值设置的observer只能监听在对象整体出现变化时响应', newVal, oldVal)
       },
       logTestObserversChangeMe (val) {
+        this.debounce('myLogTestObserversChangeMe', () => {
+          console.log('防抖监听', val)
+        }, 500)
         console.log('通过observers属性进行监听的值可以监听任意对象中的值', val)
       },
       dataChangeHandler (event) {
